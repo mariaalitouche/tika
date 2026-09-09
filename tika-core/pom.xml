@@ -119,6 +119,27 @@
       <artifactId>junit-jupiter-engine</artifactId>
       <scope>test</scope>
     </dependency>
+
+    <!-- ===================================================== -->
+    <!-- Ajouts pour la tâche 2 : Mockito                        -->
+    <!-- Nécessaire car les tests générés par ChatUniTest        -->
+    <!-- utilisent systématiquement Mockito (@Mock, @Spy,        -->
+    <!-- MockitoExtension), qui n'était pas une dépendance de    -->
+    <!-- ce module à l'origine.                                  -->
+    <!-- Les ajouts ont été fait à l'aide d'une IA (Claude)      -->
+    <!-- ===================================================== -->
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <version>5.11.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-junit-jupiter</artifactId>
+      <version>5.11.0</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -289,6 +310,27 @@
             </goals>
           </execution>
         </executions>
+      </plugin>
+
+      <!-- ===================================================== -->
+      <!-- Ajout pour la tâche 2 : ChatUniTest                     -->
+      <!-- Génère des tests unitaires via un LLM local (Ollama).   -->
+      <!-- Modèle utilisé : codeqwen:v1.5-chat                     -->              
+      <!-- thread=false : évite de saturer la RAM/CPU en lançant   -->
+      <!-- plusieurs générations en parallèle sur une machine      -->
+      <!-- personnelle                                             -->
+      <!-- Les ajouts ont été fait à l'aide d'une IA (Claude)      -->
+      <!-- ===================================================== -->
+      <plugin>
+        <groupId>io.github.zju-aces-ise</groupId>
+        <artifactId>chatunitest-maven-plugin</artifactId>
+        <version>2.1.1</version>
+        <configuration>
+          <apiKeys>xxx</apiKeys>
+          <model>codeqwen:v1.5-chat</model>
+          <url>http://localhost:11434/v1/chat/completions</url>
+          <thread>false</thread>
+        </configuration>
       </plugin>
     </plugins>
   </build>
