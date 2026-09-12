@@ -149,25 +149,35 @@
       <plugin>
           <groupId>org.pitest</groupId>
           <artifactId>pitest-maven</artifactId>
-          <version>1.15.2</version>
+          <version>1.25.9</version>
           <configuration>
               <targetClasses>
-  <!-- Ajouter des param pour ajouter des classes spécifiques -->
-                  <param>org.apache.tika.*</param>
+                  <param>org.apache.tika.Tika</param>
               </targetClasses>
               <targetTests>
-  <!-- Ajouter des param pour ajouter des classes spécifiques -->
-                  <param>org.apache.tika.*</param>
+                  <param>org.apache.tika.TikaDetectionTest</param>
               </targetTests>
               <outputFormats>
                   <outputFormat>HTML</outputFormat>
               </outputFormats>
           </configuration>
           <dependencies>
+              <!-- Exclusion nécessaire : pitest-junit5-plugin embarque une
+                   ancienne version (1.9.2) de junit-platform-launcher qui
+                   entre en conflit avec la version 6.1.3 utilisée par le
+                   projet, causant l'erreur "OutputDirectoryCreator not
+                   available" dans le processus minion de pitest.
+                   Cette exclusion a été ajoutée à l'aide d'une IA (Claude) -->
               <dependency>
                   <groupId>org.pitest</groupId>
                   <artifactId>pitest-junit5-plugin</artifactId>
                   <version>1.2.1</version>
+                  <exclusions>
+                      <exclusion>
+                          <groupId>org.junit.platform</groupId>
+                          <artifactId>junit-platform-launcher</artifactId>
+                      </exclusion>
+                  </exclusions>
               </dependency>
           </dependencies>
       </plugin>
@@ -343,7 +353,7 @@
       <!-- ===================================================== -->
       <!-- Ajout pour la tâche 2 : ChatUniTest                     -->
       <!-- Génère des tests unitaires via un LLM local (Ollama).   -->
-      <!-- Modèle utilisé : codeqwen:v1.5-chat                     -->              
+      <!-- Modèle utilisé : codeqwen:v1.5-chat                     -->
       <!-- thread=false : évite de saturer la RAM/CPU en lançant   -->
       <!-- plusieurs générations en parallèle sur une machine      -->
       <!-- personnelle                                             -->
