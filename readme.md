@@ -14,7 +14,7 @@ Au total, il y eu 2 corrections faites.
 1. Maven cherchait les tests dans src/test/java et ignoraient chatunitest-tests.
 Correction : déplacement du fichier dans src/test/java.
 
-2.Le plug-in maven-checkstyle-plugin bloquait le bluid en raison du non-respect des règles du projet.
+2. Le plug-in maven-checkstyle-plugin bloquait le bluid en raison du non-respect des règles du projet.
 Correction : ajout du paramètre -Dcheckstyle.skip=true pour passer outre la vérification statique.
 
 Explication des tests et critique :
