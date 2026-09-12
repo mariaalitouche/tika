@@ -4,7 +4,7 @@ Justification des classes choisies :
 
 L'emplacement des tests générés se trouvent dans le module tika-core.
 
-Chemin : tika-core/chatunitest-tests/org/apache/tika/Tika_detect_1_0_Test.java
+Chemin : tika-core/src/test/java/org/apache/tika/Tika_detect_1_0_Test.java
 
 Est-ce que les tests compilaient et s'exécutaient immédiatement? Non.
 Étant donné que le projet Apache suit une structure Maven standard et des règles de qualité strict (Checkstyle). Les tests qui sont générés dans un dossier qui n'est pas standard (chatunitest-tests) ne sont pas automatiquement reconnus et il faut modifier la commande Maven ou le projet pour qu'ils soient finalement reconnus.
