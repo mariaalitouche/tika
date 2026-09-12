@@ -19,7 +19,8 @@
   under the License.
 -->
 
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
@@ -145,41 +146,41 @@
   <build>
     <plugins>
 
-  <!-- Le plugin a été ajouté à l'aide d'une IA (Claude)      -->
+      <!-- Le plugin a été ajouté à l'aide d'une IA (Claude)      -->
       <plugin>
-          <groupId>org.pitest</groupId>
-          <artifactId>pitest-maven</artifactId>
-          <version>1.25.9</version>
-          <configuration>
-              <targetClasses>
-                  <param>org.apache.tika.Tika</param>
-              </targetClasses>
-              <targetTests>
-                  <param>org.apache.tika.TikaDetectionTest</param>
-              </targetTests>
-              <outputFormats>
-                  <outputFormat>HTML</outputFormat>
-              </outputFormats>
-          </configuration>
-          <dependencies>
-              <!-- Exclusion nécessaire : pitest-junit5-plugin embarque une
-                   ancienne version (1.9.2) de junit-platform-launcher qui
-                   entre en conflit avec la version 6.1.3 utilisée par le
-                   projet, causant l'erreur "OutputDirectoryCreator not
-                   available" dans le processus minion de pitest.
-                   Cette exclusion a été ajoutée à l'aide d'une IA (Claude) -->
-              <dependency>
-                  <groupId>org.pitest</groupId>
-                  <artifactId>pitest-junit5-plugin</artifactId>
-                  <version>1.2.1</version>
-                  <exclusions>
-                      <exclusion>
-                          <groupId>org.junit.platform</groupId>
-                          <artifactId>junit-platform-launcher</artifactId>
-                      </exclusion>
-                  </exclusions>
-              </dependency>
-          </dependencies>
+        <groupId>org.pitest</groupId>
+        <artifactId>pitest-maven</artifactId>
+        <version>1.25.9</version>
+        <configuration>
+          <targetClasses>
+            <param>org.apache.tika.Tika</param>
+          </targetClasses>
+          <targetTests>
+            <param>org.apache.tika.TikaDetectionTest</param>
+          </targetTests>
+          <outputFormats>
+            <outputFormat>HTML</outputFormat>
+          </outputFormats>
+        </configuration>
+        <dependencies>
+          <!-- Exclusion nécessaire : pitest-junit5-plugin embarque une
+               ancienne version (1.9.2) de junit-platform-launcher qui
+               entre en conflit avec la version 6.1.3 utilisée par le
+               projet, causant l'erreur "OutputDirectoryCreator not
+               available" dans le processus minion de pitest.
+               Cette exclusion a été ajoutée à l'aide d'une IA (Claude) -->
+          <dependency>
+            <groupId>org.pitest</groupId>
+            <artifactId>pitest-junit5-plugin</artifactId>
+            <version>1.2.1</version>
+            <exclusions>
+              <exclusion>
+                <groupId>org.junit.platform</groupId>
+                <artifactId>junit-platform-launcher</artifactId>
+              </exclusion>
+            </exclusions>
+          </dependency>
+        </dependencies>
       </plugin>
 
       <plugin>
@@ -383,9 +384,9 @@
           <jvmArgs>-Xmx256m</jvmArgs>
           <timeout>240000</timeout>
           <effort>max</effort>
-        <failOnError>true</failOnError>
-      </configuration>
-    </plugin>
+          <failOnError>true</failOnError>
+        </configuration>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-project-info-reports-plugin</artifactId>
