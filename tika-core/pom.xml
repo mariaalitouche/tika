@@ -157,6 +157,7 @@
           </targetClasses>
           <targetTests>
             <param>org.apache.tika.TikaDetectionTest</param>
+            <param>org.apache.tika.Tika_detect_1_0_Test</param>
           </targetTests>
           <outputFormats>
             <outputFormat>HTML</outputFormat>

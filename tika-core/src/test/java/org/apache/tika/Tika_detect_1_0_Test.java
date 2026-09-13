@@ -37,7 +37,7 @@ public class Tika_detect_1_0_Test {
         Detector detector = new DefaultDetector();
         Parser parser = new AutoDetectParser(detector);
         Tika tika = new Tika(detector, parser);
-        InputStream stream = new ByteArrayInputStream("Hello, World!".getBytes());
+        InputStream stream = new ByteArrayInputStream("This is a plain text document for testing purposes.".getBytes(java.nio.charset.StandardCharsets.UTF_8));
         Metadata metadata = new Metadata();
         String detectedType = tika.detect(stream, metadata);
         assertEquals("text/plain", detectedType);
