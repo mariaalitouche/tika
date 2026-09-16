@@ -134,8 +134,61 @@ C'est pour ça qu'un mutant de plus est maintenant détecté : avant, si quelqu'
 
 ## Tests supplémentaires écrits à la main
 
-*(à compléter)*
+### Couverture de tests pour `detect(String)`
+
+L'objectif du test écrit à la main est de couvrir le cas d'erreur de la méthode `detect(String)` qui n'était pas traité par les tests existants.
+Ce test permet d'atteindre une couverture de code complète (**100 %**) en forçant le passage dans la gestion d'exception `IOException`.
+
+---
+
+#### Description du cas de test
+
+* **Nom du test :** `testDetectThrowsIllegalStateExceptionOnIOException`
+* **Scénario :** Avec un spy Mockito, on simule une levée d'exception (`IOException`) pendant l'appel à la méthode `detect((InputStream) null, name)` dans notre méthode `detect(String)`.
+* **Comportement attendu :** La méthode doit attraper cette `IOException` et la relancer en une `IllegalStateException`.
+* **Résultat :** Le test vérifie qu'on lève bien une `IllegalStateException`, ce qui confirme que le bloc `catch` fonctionne comme on le souhaite.
+
+---
+
+### Couverture de tests pour `detect(InputStream, Metadata)`
+
+L'objectif des tests écrits à la main dans la classe `TikaDetectInputStreamMetadataTest` est de couvrir toutes les branches conditionnelles et les combinaisons d'entrées (`null`, données valides, métadonnées absentes ou conflits) de la méthode `detect(InputStream, Metadata)`.
+
+Bien que la couverture de cette méthode affichait déjà 100 % (JaCoCo) avant l'ajout de ces tests, le test généré par IA indiquait seulement que les lignes de la méthode étaient couvertes (exécutées par les tests),
+mais ne testait pas tous les cas d'erreur, conflit de métadonnées, etc.
+
+---
+
+#### Description des cas de tests
+
+#### 1. `testDetectWithNullInputStreamAndEmptyMetadata`
+* **Scénario :** Input nul (`InputStream = null`) et objet `Metadata` vide.
+* **Comportement souhaité :** Ne disposant ni de données brutes ni de nom de fichier (métadonnées), Tika applique son mécanisme de fallback.
+* **Résultat validé :** Retourne le type MIME générique `"application/octet-stream"`.
+
+#### 2. `testDetectWithNullInputStreamAndFilenameInMetadata`
+* **Scénario :** Input nul (`InputStream = null`), mais présence d'une métadonnée avec le nom du fichier (`TikaCoreProperties.RESOURCE_NAME_KEY = "document.pdf"`).
+* **Comportement attendu :** En l'absence de données brutes, Tika doit analyser l'extension du fichier dans les métadonnées.
+* **Résultat validé :** Retourne le type MIME `"application/pdf"`.
+
+#### 3. `testDetectWithValidInputStreamAndEmptyMetadata`
+* **Scénario :** Un `InputStream` valide contenant du code HTML brut (`<html><body></body></html>`) avec un objet `Metadata` vide.
+* **Comportement attendu :** Tika analyse les premières données du flux pour identifier la structure du document sans se fier à un nom de fichier.
+* **Résultat validé :** Retourne le type MIME `"text/html"`.
+
+#### 4. `testDetectWithValidInputStreamAndWrongMetadata`
+* **Scénario :** Un `InputStream` avec du code HTML, couplé à une métadonnée incohérente qui indique une extension texte (`TikaCoreProperties.RESOURCE_NAME_KEY = "document.txt"`).
+* **Comportement attendu :** L'analyse du fichier doit être prioritaire sur les indications des métadonnées. Tika doit ignorer l'extension `.txt` et doit plutôt reconnaître le contenu.
+* **Résultat validé :** Retourne le type MIME `"text/html"`.
+---
 
 ## Comparaison des tests générés par IA et tests écrits à la main
 
-*(à compléter)*
+* **Test généré par l'IA (`Tika_detect_1_0_Test`) :** Ce test appelle `detect(InputStream, Metadata)` sur un cas et l'IA instancie inutilement un `DefaultDetector` et un `AutoDetectParser` alors que le constructeur par défaut `new Tika()` 
+le fait déjà par défaut. Il se limite seulement à un cas (un texte avec des métadonnées vides) sans tester d'autres cas d'erreurs. Il donne une illusion que la fonction est bien testée avec une couverture de 100%, mais ces validations ne sont pas suffisantes. 
+De plus, il n'a pas touché à la méthode `detect(String)`. Résultat : le bloc `catch` de cette méthode reste non couvert.
+
+
+* **Tests écrits à la main :**
+    * **Gestion des exceptions (`TikaDetectStringTest`) :** Le test de cette classe utilise Mockito pour simuler une `IOException`. Cela force l'exécution du bloc `catch` de `detect(String)` et assure la couverture de la gestion d'erreur en vérifiant qu'une `IllegalStateException` est levée.
+    * **Validation des cas limites et conflits (`TikaDetectInputStreamMetadataTest`) :** Ces 4 tests explorent les cas limites (flux `null`, métadonnées vides) et les conflits d'entrées (extension de fichier inadéquat avec un contenu réel). Ils permettent de réellement valider la logique de la méthode `detect(InputStream, Metadata)`.
