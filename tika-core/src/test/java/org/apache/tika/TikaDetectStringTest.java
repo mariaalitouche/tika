@@ -17,41 +17,38 @@
 package org.apache.tika;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.spy;
 
 import java.io.IOException;
-import java.io.InputStream;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import org.apache.tika.detect.Detector;
+import org.apache.tika.io.TikaInputStream;
+import org.apache.tika.metadata.Metadata;
+import org.apache.tika.mime.MediaType;
+import org.apache.tika.parser.ParseContext;
 
 public class TikaDetectStringTest {
 
-    private Tika tika;
-
-    @BeforeEach
-    public void setUp() {
-        tika = new Tika();
-    }
-
     @Test
     public void testDetectThrowsIllegalStateExceptionOnIOException() throws Exception {
-        // on crée le spy Mockito
-        Tika tikaSpy = spy(tika);
-
         // on forme le comportement simulé
-        // on indique au Mockito de lancer une exception au moment de lancer
-        // notre appel a detect
-        doThrow(new IOException("Erreur simulee"))
-            // n'importe quel flux et nom de fichier "nom_fichier"
-            .when(tikaSpy).detect((InputStream) any(), eq("nom_fichier"));
+        // on crée un détecteur qui lève une exception
+        // au moment de lancer notre appel a detect
+        Detector detector = new Detector() {
+            @Override
+            public MediaType detect(TikaInputStream input, Metadata metadata, ParseContext context)
+                    throws IOException {
+                throw new IOException("Erreur simulée");
+            }
+        };
+
+        // on crée l'instance de Tika qui utilise ce détecteur
+        Tika tika = new Tika(detector);
 
         // on exécute et vérifie que l'exception est bien relancée
         assertThrows(IllegalStateException.class, () -> {
-            tikaSpy.detect("nom_fichier");
+            tika.detect("nom_fichier");
         });
     }
 }

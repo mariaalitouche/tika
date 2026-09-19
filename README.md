@@ -144,7 +144,7 @@ Ce test permet d'atteindre une couverture de code complète (**100 %**) en forç
 #### Description du cas de test
 
 * **Nom du test :** `testDetectThrowsIllegalStateExceptionOnIOException`
-* **Scénario :** Avec un spy Mockito, on simule une levée d'exception (`IOException`) pendant l'appel à la méthode `detect((InputStream) null, name)` dans notre méthode `detect(String)`.
+* **Scénario :** Avec un `Detector`, on simule une levée d'exception (`IOException`) pendant l'appel à la méthode `detect((InputStream) null, name)` dans notre méthode `detect(String)`.
 * **Comportement attendu :** La méthode doit attraper cette `IOException` et la relancer en une `IllegalStateException`.
 * **Résultat :** Le test vérifie qu'on lève bien une `IllegalStateException`, ce qui confirme que le bloc `catch` fonctionne comme on le souhaite.
 

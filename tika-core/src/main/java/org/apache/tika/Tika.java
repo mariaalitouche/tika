@@ -49,7 +49,6 @@ import org.apache.tika.sax.WriteOutContentHandler;
  *
  * @see Parser
  * @see Detector
- * @see Detector
  * @since Apache Tika 0.5
  */
 public class Tika {
