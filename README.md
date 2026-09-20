@@ -1,6 +1,6 @@
 ## Justification des classes choisies
 
-On a choisi de travailler avec le module `tika-core`, et plus précisément avec la classe [Tika](tika-core/src/main/java/org/apache/tika).
+On a choisi de travailler avec le module `tika-core`, et plus précisément avec la classe [Tika](tika-core/src/main/java/org/apache/tika/Tika.java).
 
 **Pourquoi cette classe a déjà des tests, mais pas assez :**
 
@@ -29,9 +29,9 @@ Les tests générés par l'IA sont dans le fichier [Tika_detect_1_0_Test.java](t
 
 Au total, **2 corrections** ont été nécessaires :
 
-1. **Maven cherchait les tests dans `src/test/java/tika`** et ignorait `chatunitest-tests`.
+1. **Maven cherchait les tests dans `src/test/java/tika`**, mais le fichier généré se trouvait dans `chatunitest-tests`.
   
-   **Correction :** déplacement du fichier dans [tika-core/src/test/java/org/apache/tika](tika-core/src/test/java/org/apache/tika).
+   **Correction :** déplacement du fichier dans [tika-core/src/test/java/org/apache/tika/Tika_detect_1_0_Test.java](tika-core/src/test/java/org/apache/tika/Tika_detect_1_0_Test.java).
 
 2. **Le plugin `maven-checkstyle-plugin` bloquait le build** en raison du non-respect des règles du projet.
    **Correction :** ajout du paramètre `-Dcheckstyle.skip=true` pour passer outre la vérification statique.
@@ -139,6 +139,8 @@ C'est pour ça qu'un mutant de plus est maintenant détecté : avant, si quelqu'
 L'objectif du test écrit à la main est de couvrir le cas d'erreur de la méthode `detect(String)` qui n'était pas traité par les tests existants.
 Ce test permet d'atteindre une couverture de code complète (**100 %**) en forçant le passage dans la gestion d'exception `IOException`.
 
+Le test se trouve dans le fichier [TikaDetectStringTest.java](tika-core/src/test/java/org/apache/tika/TikaDetectStringTest.java).
+
 ---
 
 #### Description du cas de test
@@ -151,6 +153,8 @@ Ce test permet d'atteindre une couverture de code complète (**100 %**) en forç
 ---
 
 ### Couverture de tests pour `detect(InputStream, Metadata)`
+
+Les tests se trouvent dans le fichier [TikaDetectInputStreamMetadataTest.java](tika-core/src/test/java/org/apache/tika/TikaDetectInputStreamMetadataTest.java).
 
 L'objectif des tests écrits à la main dans la classe `TikaDetectInputStreamMetadataTest` est de couvrir toutes les branches conditionnelles et les combinaisons d'entrées (`null`, données valides, métadonnées absentes ou conflits) de la méthode `detect(InputStream, Metadata)`.
 
@@ -190,5 +194,24 @@ De plus, il n'a pas touché à la méthode `detect(String)`. Résultat : le bloc
 
 
 * **Tests écrits à la main :**
-    * **Gestion des exceptions (`TikaDetectStringTest`) :** Le test de cette classe utilise Mockito pour simuler une `IOException`. Cela force l'exécution du bloc `catch` de `detect(String)` et assure la couverture de la gestion d'erreur en vérifiant qu'une `IllegalStateException` est levée.
+    * **Gestion des exceptions (`TikaDetectStringTest`) :** Ce test utilise un `Detector` qui simule une `IOException`. Cela force l'exécution du bloc `catch` de `detect(String)` et assure la couverture de la gestion d'erreur en vérifiant qu'une `IllegalStateException` est levée.
     * **Validation des cas limites et conflits (`TikaDetectInputStreamMetadataTest`) :** Ces 4 tests explorent les cas limites (flux `null`, métadonnées vides) et les conflits d'entrées (extension de fichier inadéquat avec un contenu réel). Ils permettent de réellement valider la logique de la méthode `detect(InputStream, Metadata)`.
+
+## Analyse de mutation après les tests écrits à la main
+
+| Métrique | Après ChatUniTest | Après tests manuels |
+|---|---|---|
+| Couverture de lignes (classe `Tika`) | 18/128 (14%) | 22/128 (17%) |
+| Mutants générés | 43 | 43 |
+| Mutants tués | 6 (14%) | 6 (14%) |
+| Mutants sans couverture | 37 | 37 |
+
+### Ce que ça montre
+
+Le score de mutation ne change pas après l'ajout des tests manuels (toujours 6 mutants tués sur 43 pour toute la classe). Ce n'est pas un problème : les mutants des deux méthodes qu'on a choisies (`detect(InputStream, Metadata)` et `detect(String)`) étaient déjà tous détectés grâce au test de l'IA.
+
+Les tests manuels font passer par beaucoup plus de lignes de code (la couverture est passée de 14% à 17%), mais un mutant ne peut être "tué" qu'une seule fois. Donc même si nos tests manuels exécutent plus de code, ça ne fait pas monter le score total de la classe.
+
+En fait, si on regarde seulement les deux méthodes qu'on a choisies, le résultat est très bon : les 6 mutants tués sont exactement ceux de ces deux méthodes, et aucun d'entre eux n'est manqué. Les 37 mutants qui restent appartiennent tous à d'autres méthodes de la classe (`parse`, `parseToString`, `translate`, etc.), qu'on n'a pas eu à tester à cause des contraintes du travail.
+
+Donc l'utilité de nos tests manuels ne se voit pas dans le score de mutation, mais plutôt dans le fait qu'ils couvrent plus de situations différentes : valeurs vides (`null`), métadonnées vides, cas où le contenu du fichier ne correspond pas à son nom, et gestion des erreurs.
