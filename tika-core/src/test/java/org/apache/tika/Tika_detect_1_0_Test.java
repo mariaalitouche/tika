@@ -16,13 +16,13 @@
  */
 package org.apache.tika;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Test;
 
 import org.apache.tika.detect.DefaultDetector;
 import org.apache.tika.detect.Detector;
