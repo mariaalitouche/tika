@@ -115,7 +115,7 @@ En plus de pitest, on a aussi regardé les rapports JaCoCo avant et après l'ajo
 | `detect(String)` | 46% | 46% (inchangé) |
 | Toute la classe `Tika` | 11% | 14% |
 
-Le résultat le plus clair est sur `detect(InputStream, Metadata)` : la couverture est passée de 44% à 100%. Le nouveau test couvre maintenant complètement cette méthode.
+Le résultat le plus clair est sur `detect(InputStream, Metadata)` : la couverture est passée de 44% à 100% (Jacoco). Le nouveau test couvre maintenant complètement cette méthode.
 
 La méthode `detect(String)` reste pareille, à 46%, car le test généré par l'IA ne touchait pas à cette méthode, seulement à `detect(InputStream, Metadata)`.
 
