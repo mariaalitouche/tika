@@ -27,14 +27,16 @@ Les tests générés par l'IA sont dans le fichier [Tika_detect_1_0_Test.java](t
 
 Étant donné que le projet Apache suit une structure Maven standard et des règles de qualité strictes (Checkstyle), les tests générés dans un dossier qui n'est pas standard (`chatunitest-tests`) ne sont pas automatiquement reconnus. Il a fallu modifier la commande Maven ou le projet pour qu'ils soient finalement reconnus.
 
-Au total, **2 corrections** ont été nécessaires :
+Au total, **3 corrections** ont été nécessaires :
 
 1. **Maven cherchait les tests dans `src/test/java/tika`**, mais le fichier généré se trouvait dans `chatunitest-tests`.
-  
    **Correction :** déplacement du fichier dans [tika-core/src/test/java/org/apache/tika/Tika_detect_1_0_Test.java](tika-core/src/test/java/org/apache/tika/Tika_detect_1_0_Test.java).
 
 2. **Le plugin `maven-checkstyle-plugin` bloquait le build** en raison du non-respect des règles du projet.
    **Correction :** ajout du paramètre `-Dcheckstyle.skip=true` pour passer outre la vérification statique.
+
+3. **Le test généré par l'IA utilisait des imports génériques** (par exemple `import org.junit.jupiter.api.*;` ou `import static org.junit.jupiter.api.Assertions.*;`), alors que les règles du projet exigent des imports explicites, un par un.
+   **Correction :** les imports génériques ont été remplacés par des imports précis. Par exemple, `Assertions.*` a été remplacé par `Assertions.assertEquals`, et `org.junit.jupiter.api.*` par `org.junit.jupiter.api.Test`. Cette erreur a seulement été découverte plus tard, en exécutant les GitHub Actions (voir la section plus bas à ce sujet).
 
 ## Explication des tests générés et critique
 
@@ -105,6 +107,7 @@ On a comparé le score de mutation avant et après l'ajout du test généré par
 Avec le nouveau test ajouté par l'IA, on a réussi à couvrir un peu plus de code : la couverture est passée de 12% à 14%, et un mutant de plus a été détecté (le score de mutation est passé de 12% à 14% aussi).
 
 C'est une petite amélioration. Ça montre que le test généré aide un peu, mais il reste encore du code non testé dans la classe `Tika` (37 mutants sur 43 ne sont toujours pas détectés).
+
 ### Comparaison JaCoCo (couverture de code) avant et après
 
 En plus de pitest, on a aussi regardé les rapports JaCoCo avant et après l'ajout du test généré par l'IA, pour voir l'effet précis sur la méthode ciblée.
@@ -114,6 +117,14 @@ En plus de pitest, on a aussi regardé les rapports JaCoCo avant et après l'ajo
 | `detect(InputStream, Metadata)` | 44% | 100% |
 | `detect(String)` | 46% | 46% (inchangé) |
 | Toute la classe `Tika` | 11% | 14% |
+
+**Rapport JaCoCo avant l'ajout du test généré par l'IA :**
+
+![Rapport JaCoCo avant l'ajout du test](images/Avant_IA.png)
+
+**Rapport JaCoCo après l'ajout du test généré par l'IA :**
+
+![Rapport JaCoCo après l'ajout du test](images/Apres_IA.png)
 
 Le résultat le plus clair est sur `detect(InputStream, Metadata)` : la couverture est passée de 44% à 100% (Jacoco). Le nouveau test couvre maintenant complètement cette méthode.
 
@@ -185,6 +196,17 @@ mais ne testait pas tous les cas d'erreur, conflit de métadonnées, etc.
 * **Comportement attendu :** L'analyse du fichier doit être prioritaire sur les indications des métadonnées. Tika doit ignorer l'extension `.txt` et doit plutôt reconnaître le contenu.
 * **Résultat validé :** Retourne le type MIME `"text/html"`.
 ---
+
+### Résultat final de la couverture JaCoCo
+
+Après l'ajout des tests écrits à la main, nous avons généré un nouveau rapport JaCoCo afin de vérifier leur effet sur la couverture de la classe `Tika`.
+
+![Rapport JaCoCo final après les tests écrits à la main](images/Final.png)
+
+La couverture globale de la classe `Tika` passe de **14 % à 17 %** après l'ajout des tests écrits à la main.
+
+La méthode `detect(String)` atteint désormais **100 % de couverture** et `detect(InputStream, Metadata)` demeure à **100 %**.
+
 
 ## Comparaison des tests générés par IA et tests écrits à la main
 
