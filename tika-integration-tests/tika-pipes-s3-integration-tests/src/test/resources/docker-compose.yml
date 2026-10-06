@@ -15,12 +15,10 @@
 version: '3.7'
 services:
   minio-service:
-    image: rustfs/rustfs:latest
+    image: quay.io/minio/minio
+    command: minio server /data
     ports:
       - "9000:9000"
     environment:
-      RUSTFS_VOLUMES: /data
-      RUSTFS_ADDRESS: 0.0.0.0:9000
-      RUSTFS_CONSOLE_ENABLE: "false"
-      RUSTFS_ACCESS_KEY: minio
-      RUSTFS_SECRET_KEY: minio123
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
