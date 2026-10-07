@@ -110,10 +110,10 @@ C'est une petite amélioration. Ça montre que le test généré aide un peu, ma
 En plus de pitest, on a aussi regardé les rapports JaCoCo avant et après l'ajout du test généré par l'IA, pour voir l'effet précis sur la méthode ciblée.
 
 | Méthode | Couverture avant | Couverture après |
-|---|---|---|
-| `detect(InputStream, Metadata)` | 44% | 100% |
-| `detect(String)` | 46% | 46% (inchangé) |
-| Toute la classe `Tika` | 11% | 14% |
+|---|------------------|---|
+| `detect(InputStream, Metadata)` | 44%              | 100% |
+| `detect(String)` | 46%              | 46% (inchangé) |
+| Toute la classe `Tika` | 12%              | 14% |
 
 Le résultat le plus clair est sur `detect(InputStream, Metadata)` : la couverture est passée de 44% à 100% (Jacoco). Le nouveau test couvre maintenant complètement cette méthode.
 
