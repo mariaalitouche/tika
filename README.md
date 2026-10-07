@@ -243,6 +243,12 @@ Donc l'utilité de nos tests manuels ne se voit pas dans le score de mutation, m
 
 Les **GitHub Actions ont été activées à la fin du projet**, une fois que toutes les modifications avaient déjà été faites. Nous n'avons donc pas pu tester les workflows au fur et à mesure du développement pour détecter les erreurs immédiatement. Les problèmes ont été identifiés lors de l'exécution des workflows à la fin, puis corrigés progressivement.
 
+Deux workflows ont été désactivés, puisqu'ils ne sont pas activés dans le dépôt d'origine :
+
+- `Docker release - tika-server and tika-grpc`
+
+- `Docker snapshot - tika-server and tika-grpc`
+
 ### Erreurs rencontrées et corrections
 
 #### Erreurs liées aux imports JUnit
