@@ -27,14 +27,16 @@ Les tests générés par l'IA sont dans le fichier [Tika_detect_1_0_Test.java](t
 
 Étant donné que le projet Apache suit une structure Maven standard et des règles de qualité strictes (Checkstyle), les tests générés dans un dossier qui n'est pas standard (`chatunitest-tests`) ne sont pas automatiquement reconnus. Il a fallu modifier la commande Maven ou le projet pour qu'ils soient finalement reconnus.
 
-Au total, **2 corrections** ont été nécessaires :
+Au total, **3 corrections** ont été nécessaires :
 
 1. **Maven cherchait les tests dans `src/test/java/tika`**, mais le fichier généré se trouvait dans `chatunitest-tests`.
-  
    **Correction :** déplacement du fichier dans [tika-core/src/test/java/org/apache/tika/Tika_detect_1_0_Test.java](tika-core/src/test/java/org/apache/tika/Tika_detect_1_0_Test.java).
 
 2. **Le plugin `maven-checkstyle-plugin` bloquait le build** en raison du non-respect des règles du projet.
    **Correction :** ajout du paramètre `-Dcheckstyle.skip=true` pour passer outre la vérification statique.
+
+3. **Le test généré par l'IA utilisait des imports génériques** (par exemple `import org.junit.jupiter.api.*;` ou `import static org.junit.jupiter.api.Assertions.*;`), alors que les règles du projet exigent des imports explicites, un par un.
+   **Correction :** les imports génériques ont été remplacés par des imports précis. Par exemple, `Assertions.*` a été remplacé par `Assertions.assertEquals`, et `org.junit.jupiter.api.*` par `org.junit.jupiter.api.Test`. Cette erreur a seulement été découverte plus tard, en exécutant les GitHub Actions (voir la section plus bas à ce sujet).
 
 ## Explication des tests générés et critique
 
@@ -105,6 +107,7 @@ On a comparé le score de mutation avant et après l'ajout du test généré par
 Avec le nouveau test ajouté par l'IA, on a réussi à couvrir un peu plus de code : la couverture est passée de 12% à 14%, et un mutant de plus a été détecté (le score de mutation est passé de 12% à 14% aussi).
 
 C'est une petite amélioration. Ça montre que le test généré aide un peu, mais il reste encore du code non testé dans la classe `Tika` (37 mutants sur 43 ne sont toujours pas détectés).
+
 ### Comparaison JaCoCo (couverture de code) avant et après
 
 En plus de pitest, on a aussi regardé les rapports JaCoCo avant et après l'ajout du test généré par l'IA, pour voir l'effet précis sur la méthode ciblée.
@@ -114,6 +117,14 @@ En plus de pitest, on a aussi regardé les rapports JaCoCo avant et après l'ajo
 | `detect(InputStream, Metadata)` | 44%              | 100% |
 | `detect(String)` | 46%              | 46% (inchangé) |
 | Toute la classe `Tika` | 12%              | 14% |
+
+**Rapport JaCoCo avant l'ajout du test généré par l'IA :**
+
+![Rapport JaCoCo avant l'ajout du test](images/Avant_IA.png)
+
+**Rapport JaCoCo après l'ajout du test généré par l'IA :**
+
+![Rapport JaCoCo après l'ajout du test](images/Apres_IA.png)
 
 Le résultat le plus clair est sur `detect(InputStream, Metadata)` : la couverture est passée de 44% à 100% (Jacoco). Le nouveau test couvre maintenant complètement cette méthode.
 
@@ -186,6 +197,17 @@ mais ne testait pas tous les cas d'erreur, conflit de métadonnées, etc.
 * **Résultat validé :** Retourne le type MIME `"text/html"`.
 ---
 
+### Résultat final de la couverture JaCoCo
+
+Après l'ajout des tests écrits à la main, nous avons généré un nouveau rapport JaCoCo afin de vérifier leur effet sur la couverture de la classe `Tika`.
+
+![Rapport JaCoCo final après les tests écrits à la main](images/Final.png)
+
+La couverture globale de la classe `Tika` passe de **14 % à 17 %** après l'ajout des tests écrits à la main.
+
+La méthode `detect(String)` atteint désormais **100 % de couverture** et `detect(InputStream, Metadata)` demeure à **100 %**.
+
+
 ## Comparaison des tests générés par IA et tests écrits à la main
 
 * **Test généré par l'IA (`Tika_detect_1_0_Test`) :** Ce test appelle `detect(InputStream, Metadata)` sur un cas et l'IA instancie inutilement un `DefaultDetector` et un `AutoDetectParser` alors que le constructeur par défaut `new Tika()` 
@@ -215,3 +237,40 @@ Les tests manuels font passer par beaucoup plus de lignes de code (la couverture
 En fait, si on regarde seulement les deux méthodes qu'on a choisies, le résultat est très bon : les 6 mutants tués sont exactement ceux de ces deux méthodes, et aucun d'entre eux n'est manqué. Les 37 mutants qui restent appartiennent tous à d'autres méthodes de la classe (`parse`, `parseToString`, `translate`, etc.), qu'on n'a pas eu à tester à cause des contraintes du travail.
 
 Donc l'utilité de nos tests manuels ne se voit pas dans le score de mutation, mais plutôt dans le fait qu'ils couvrent plus de situations différentes : valeurs vides (`null`), métadonnées vides, cas où le contenu du fichier ne correspond pas à son nom, et gestion des erreurs.
+
+
+## GitHub Actions
+
+Les **GitHub Actions ont été activées à la fin du projet**, une fois que toutes les modifications avaient déjà été faites. Nous n'avons donc pas pu tester les workflows au fur et à mesure du développement pour détecter les erreurs immédiatement. Les problèmes ont été identifiés lors de l'exécution des workflows à la fin, puis corrigés progressivement.
+
+### Erreurs rencontrées et corrections
+
+#### Erreurs liées aux imports JUnit
+
+Les premières erreurs concernaient les imports utilisés dans les tests générés. Certains fichiers utilisaient des imports génériques (`*`), alors que les règles du projet exigeaient des imports explicites.
+
+Nous avons remplacé les imports génériques par les imports nécessaires uniquement. Par exemple, dans [Tika_detect_1_0_Test.java](tika-core/src/test/java/org/apache/tika/Tika_detect_1_0_Test.java), l'import de `Assertions.*` a été remplacé par `Assertions.assertEquals`, et l'import de `org.junit.jupiter.api.*` par `org.junit.jupiter.api.Test`.
+
+Ces modifications ont permis de respecter les règles du projet et de corriger les deux premières erreurs signalées par GitHub Actions.
+
+#### Autres erreurs dans les tests
+
+Trois autres erreurs ont ensuite été corrigées dans les tests.
+
+Dans [TikaDetectInputStreamMetadataTest.java](tika-core/src/test/java/org/apache/tika/TikaDetectInputStreamMetadataTest.java), les imports génériques ont également été remplacés par des imports explicites : `assertEquals`, `BeforeEach` et `Test`.
+
+Dans [TikaDetectStringTest.java](tika-core/src/test/java/org/apache/tika/TikaDetectStringTest.java), une erreur de formatage était liée à l'absence d'un retour à la ligne à la fin du fichier. Un retour à la ligne a été ajouté afin de respecter les conventions du projet.
+
+Ces corrections ont permis de résoudre les trois erreurs restantes signalées par le workflow.
+
+#### Mise à jour de l'environnement de test Docker
+
+Un problème concernait également l'environnement Docker utilisé pour les tests d'intégration S3. Pour comprendre l'origine de ce problème, nous avons utilisé une IA (ChatGPT) afin d'analyser les fichiers de configuration, de retracer l'historique des modifications du workflow GitHub Actions et d'identifier les changements qui pouvaient expliquer l'échec.
+
+Cette analyse nous a permis de retracer la configuration du service utilisé par les tests et d'identifier une modification nécessaire dans [docker-compose.yml](tika-integration-tests/tika-pipes-s3-integration-tests/src/test/resources/docker-compose.yml). Le service **MinIO** a finalement été remplacé par **RustFS**, avec une configuration adaptée des variables d'environnement et du volume de données.
+
+L'utilisation de ChatGPT nous a donc permis de retracer l'origine du problème et de déterminer la correction à apporter, qui a ensuite été appliquée directement dans le projet.
+
+### Bilan
+
+Ces corrections montrent l'importance d'exécuter les workflows régulièrement pendant le développement. Comme les GitHub Actions n'avaient été activées qu'à la fin du projet, les erreurs liées aux règles de style et à l'environnement de test n'ont été découvertes qu'une fois le développement terminé. Les logs des workflows, ainsi que l'analyse réalisée avec ChatGPT, ont permis d'identifier les problèmes et de corriger progressivement les fichiers concernés.
