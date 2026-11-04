@@ -47,6 +47,9 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg libimage-exiftool-perl
       - name: Build with Maven
         run: mvn clean apache-rat:check test install javadoc:aggregate -Pci -B "-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
+      - name: Rickroll si échec
+        if: failure()
+        uses: ./.github/actions/rickroll
 
   e2e-tests:
     runs-on: ubuntu-latest
@@ -66,3 +69,61 @@ jobs:
           cache: 'maven'
       - name: Run E2E Tests
         run: mvn -pl tika-e2e-tests -am clean verify -Pe2e -B "-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
+      - name: Rickroll si échec
+        if: failure()
+        uses: ./.github/actions/rickroll
+
+  semgrep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0   # historique complet pour retrouver le commit de base
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Installer Semgrep
+        run: pip install semgrep
+
+      - name: Déterminer le commit de base
+        id: base
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            BASE="$PR_BASE"
+          else
+            BASE="$PUSH_BEFORE"
+          fi
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            BASE=$(git rev-parse HEAD~1)
+          fi
+          echo "Commit de base : $BASE"
+          echo "sha=$BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Scan Semgrep différentiel (échoue si nouvelle vulnérabilité)
+        env:
+          BASE_SHA: ${{ steps.base.outputs.sha }}
+        run: |
+          semgrep scan \
+            --config p/java \
+            --baseline-commit "$BASE_SHA" \
+            --metrics=off \
+            --json --output "$RUNNER_TEMP/semgrep-nouveautes.json" \
+            --error
+
+      - name: Téléverser le rapport
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-nouveautes
+          path: ${{ runner.temp }}/semgrep-nouveautes.json
+
+      - name: Rickroll si échec
+        if: failure()
+        uses: ./.github/actions/rickroll
