@@ -43,6 +43,7 @@ import org.apache.tika.sax.TeeContentHandler;
 import org.apache.tika.utils.XMLReaderUtils;
 
 
+// Commentaire de test pour la validation de la baseline
 public class NetworkParser implements Parser {
 
     private final URI uri;
