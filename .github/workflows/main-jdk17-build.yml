@@ -112,6 +112,8 @@ jobs:
         run: |
           semgrep scan \
             --config p/java \
+            --config p/security-audit \
+            --config p/owasp-top-ten \
             --baseline-commit "$BASE_SHA" \
             --metrics=off \
             --json --output "$RUNNER_TEMP/semgrep-nouveautes.json" \
