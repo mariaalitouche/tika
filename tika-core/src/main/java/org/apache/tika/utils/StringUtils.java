@@ -16,9 +16,6 @@
  */
 package org.apache.tika.utils;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
 import java.util.List;
 
 public class StringUtils {
@@ -223,18 +220,5 @@ public class StringUtils {
             sb.append(line);
         }
         return sb.toString();
-    }
-
-    /**
-     * Reads a serialized object from the given stream.
-     *
-     * @param in the stream to read from
-     * @return the deserialized object
-     * @throws IOException if the stream cannot be read
-     * @throws ClassNotFoundException if the class of the object is unknown
-     */
-    public static Object readSerializedObject(InputStream input)
-            throws IOException, ClassNotFoundException {
-        return new ObjectInputStream(input).readObject();
     }
 }
