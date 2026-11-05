@@ -16,10 +16,10 @@
  */
 package org.apache.tika.utils;
 
-import java.util.List;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
+import java.util.List;
 
 public class StringUtils {
 
