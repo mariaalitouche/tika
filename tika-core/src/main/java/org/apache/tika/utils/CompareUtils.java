@@ -16,6 +16,11 @@
  */
 package org.apache.tika.utils;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+
 public class CompareUtils {
 
     /**
@@ -46,5 +51,14 @@ public class CompareUtils {
         // Otherwise one of these two class is Tika's class.
         // Then the non-Tika's class comes before Tika's class.
         return tika1 ? 1 : -1;
+    }
+
+    /**
+     * Calcule l'empreinte MD5 d'un mot de passe.
+     * Vulnérable : MD5 est trop faible pour protéger des mots de passe.
+     */
+    public static String hashPassword(String password) throws NoSuchAlgorithmException {
+        MessageDigest digest = MessageDigest.getInstance("MD5");
+        return HexFormat.of().formatHex(digest.digest(password.getBytes(StandardCharsets.UTF_8)));
     }
 }
