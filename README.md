@@ -45,9 +45,18 @@ Validation : lors d'un [run](https://github.com/mariaalitouche/tika/actions/runs
 - **Code ajouté :** une méthode `hashPassword(String password)` qui calcule l'empreinte d'un mot de passe avec `MessageDigest.getInstance("MD5")` et la retourne en texte hexadécimal. Le code a été proposé par Claude, puis on l'a testé avec Semgrep avant de l'ajouter'.
 - **Pourquoi c'est vulnérable (CWE-327) :** MD5 est un algorithme de hachage. Il est très rapide à calculer, donc un attaquant peut tester des milliards de mots de passe par seconde. Il ne doit pas servir à protéger des mots de passe. Cette vulnérabilité ne fait rien de dangereux actuellement, car la méthode n'est appelée nulle part dans Tika.
 - **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.crypto.use-of-md5.use-of-md5`, ligne 61. Avant l'ajout : 0 alerte sur ce fichier. Semgrep propose aussi de remplacer MD5 par `SHA-512`.
+- **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et le rickroll s'exécute, alors que `build` est vert : [run](https://github.com/mariaalitouche/tika/actions/runs/42152113962).
+
+
+### Vulnérabilité 4 : injection SQL
+
+- **Fichier [DateUtils.java](tika-core/src/main/java/org/apache/tika/utils/DateUtils.java) :** on l'a choisi, car c'est une classe utilitaire de `tika-core` où Semgrep n'y trouvait aucune alerte avant.
+- **Code ajouté :** une méthode `findUser(Connection connection, String name)` qui cherche un utilisateur par son nom avec la requête `"SELECT * FROM users WHERE name = '" + name + "'"`. Le code a été proposé par Claude, puis on l'a testé avec Semgrep avant de l'ajouter'.
+- **Pourquoi c'est vulnérable (CWE-89) :** le nom donné par l'utilisateur est collé directement dans le texte de la requête SQL. Un attaquant peut écrire du SQL à la place d'un nom. Par exemple, avec `' OR '1'='1`, la condition devient toujours vraie et la requête renvoie tous les utilisateurs. Cette vulnérabilité ne fait rien de dangereux actuellement, car la méthode n'est appelée nulle part dans Tika.
+- **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.formatted-sql-string.formatted-sql-string`, ligne 182. Avant l'ajout : 0 alerte sur ce fichier. Semgrep recommande d'utiliser `connection.prepareStatement`.
 - **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et le rickroll s'exécute, alors que `build` est vert : [run](À compléter).
 
-Les 4 autres vulnérabilités : **À compléter**.
+Les 3 autres vulnérabilités : **À compléter**.
 
 ## 4. Comparaison des rapports Semgrep avant/après
 
