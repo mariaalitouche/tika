@@ -56,7 +56,14 @@ Validation : lors d'un [run](https://github.com/mariaalitouche/tika/actions/runs
 - **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.formatted-sql-string.formatted-sql-string`, ligne 182. Avant l'ajout : 0 alerte sur ce fichier. Semgrep recommande d'utiliser `connection.prepareStatement`.
 - **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et le rickroll s'exécute, alors que `build` est vert : [run](À compléter).
 
-Les 3 autres vulnérabilités : **À compléter**.
+### Vulnérabilité 5 : XML External Entity
+- **Fichier [SystemUtils.java](tika-core/src/main/java/org/apache/tika/utils/SystemUtils.java) :** on la choisit, car c'est une classe utilitaire `tika-core` où Semgrep ne trouvait aucune alerte avant.
+- **Code ajouté :** une méthode `parseXml(InputStream in)` qui sert à lire un fichier XML et à transformer le contenu en un document (objet `Document`) que Java peut comprendre et utiliser. Le code a été proposé par Claude et a été testé avec Semgrep avant de l'ajouter.
+- **Pourquoi c'est vulnérable (CWE-611) :** La méthode crée un analyseur XML sans désactiver les déclarations `DOCTYPE`. Un document XML malveillant pourrait donc utiliser des entités externes pour tenter d'accéder à des fichiers internes ou à des ressources réseau non autorisées. Cette vulnérabilité ne fait rien de dangereux actuellement, car la méthode ajoutée n'est pas appelée dans Tika.
+  **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.xxe.documentbuilderfactory-disallow-doctype-decl-missing`, ligne 80. Avant l'ajout : 0 alerte sur ce fichier. Après ajout : 1 alerte. Semgrep recommande de désactiver les déclarations `DOCTYPE` avec `dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)`.
+- **Run :**
+
+- Les 3 autres vulnérabilités : **À compléter**.
 
 ## 4. Comparaison des rapports Semgrep avant/après
 
