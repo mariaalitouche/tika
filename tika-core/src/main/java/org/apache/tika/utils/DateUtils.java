@@ -16,6 +16,10 @@
  */
 package org.apache.tika.utils;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.text.DateFormat;
 import java.text.DateFormatSymbols;
 import java.text.SimpleDateFormat;
@@ -167,5 +171,14 @@ public class DateUtils {
             }
         }
         return null;
+    }
+
+    /**
+     * Cherche un utilisateur par son nom.
+     * Vulnérable : le nom est collé directement dans la requête SQL.
+     */
+    public static ResultSet findUser(Connection connection, String name) throws SQLException {
+        Statement statement = connection.createStatement();
+        return statement.executeQuery("SELECT * FROM users WHERE name = '" + name + "'");
     }
 }
