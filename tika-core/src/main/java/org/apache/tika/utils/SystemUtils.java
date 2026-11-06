@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 package org.apache.tika.utils;
-import java.io.IOException;
 import java.io.InputStream;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.w3c.dom.Document;
