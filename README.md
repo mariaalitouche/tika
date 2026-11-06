@@ -28,6 +28,7 @@ Validation : lors d'un [run](https://github.com/mariaalitouche/tika/actions/runs
 - **Observation :** avec le nom complet `java.io.ObjectInputStream` écrit dans le code, Semgrep ne détectait rien. Avec un `import java.io.ObjectInputStream;`, la règle se déclenche. La première version de Claude ne marchait donc pas, et c'est le scan qui l'a montré.
 - **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et le rickroll s'exécute, alors que `build` est vert : [run](https://github.com/mariaalitouche/tika/actions/runs/42053876379). Pour s'assurer que seul Semgrep fait échouer le build, on a d'abord retiré la vulnérabilité ([run vert](https://github.com/mariaalitouche/tika/actions/runs/42043865027)), puis on l'a remise dans un commit séparé.
 
+
 ### Vulnérabilité 2 : générateur de nombres aléatoires faible
 
 - **Fichier [ParserUtils.java](tika-core/src/main/java/org/apache/tika/utils/ParserUtils.java) :** on l'a choisi, car Semgrep n'y trouvait aucune alerte avant.
@@ -35,9 +36,18 @@ Validation : lors d'un [run](https://github.com/mariaalitouche/tika/actions/runs
 - **Pourquoi c'est vulnérable (CWE-330) :** `java.util.Random` suit une formule mathématique prévisible. Si un attaquant observe quelques jetons, il peut retrouver l'état interne du générateur et calculer les suivants. Un jeton de session doit être impossible à deviner. Il faudrait utiliser `java.security.SecureRandom`. Cette vulnérabilité ne fait rien de dangereux actuellement, car la méthode n'est appelée nulle part dans Tika.
 - **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.crypto.weak-random.weak-random`, ligne 113. Avant l'ajout : 0 alerte sur ce fichier.
 - **Observation :** notre première version écrivait `Random random = new Random();` sur une ligne, puis `random.nextLong()` sur la suivante. Semgrep ne détectait rien (0 alerte). La règle cherche un appel directement sur `new Random()`. En écrivant `new Random().nextLong()` en une seule expression, la règle se déclenche. Comme pour la vulnérabilité 1, c'est le scan local qui a montré que la première version ne marchait pas.
-- **Run :** [run](À compléter).
+  - **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et le rickroll s'exécute, alors que `build` est vert : [run](https://github.com/mariaalitouche/tika/actions/runs/42139769215).
 
-Les 5 autres vulnérabilités : **À compléter**.
+
+### Vulnérabilité 3 : algorithme de hachage faible (MD5)
+
+- **Fichier [CompareUtils.java](tika-core/src/main/java/org/apache/tika/utils/CompareUtils.java) :** on l'a choisi, car c'est une petite classe utilitaire de `tika-core` où Semgrep n'y trouvait aucune alerte avant.
+- **Code ajouté :** une méthode `hashPassword(String password)` qui calcule l'empreinte d'un mot de passe avec `MessageDigest.getInstance("MD5")` et la retourne en texte hexadécimal. Le code a été proposé par Claude, puis on l'a testé avec Semgrep avant de l'ajouter'.
+- **Pourquoi c'est vulnérable (CWE-327) :** MD5 est un algorithme de hachage. Il est très rapide à calculer, donc un attaquant peut tester des milliards de mots de passe par seconde. Il ne doit pas servir à protéger des mots de passe. Cette vulnérabilité ne fait rien de dangereux actuellement, car la méthode n'est appelée nulle part dans Tika.
+- **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.crypto.use-of-md5.use-of-md5`, ligne 61. Avant l'ajout : 0 alerte sur ce fichier. Semgrep propose aussi de remplacer MD5 par `SHA-512`.
+- **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et le rickroll s'exécute, alors que `build` est vert : [run](À compléter).
+
+Les 4 autres vulnérabilités : **À compléter**.
 
 ## 4. Comparaison des rapports Semgrep avant/après
 
