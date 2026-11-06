@@ -66,13 +66,19 @@ Validation : lors d'un [run](https://github.com/mariaalitouche/tika/actions/runs
 
 ### Vulnérabilité 6 : validation de certificat désactivée
 - **Fichier [RegexUtils.java](tika-core/src/main/java/org/apache/tika/utils/RegexUtils.java) :** on a choisi cette classe utilitaire de `tika-core`, car Semgrep n'y trouvait aucune alerte avant l'ajout du code.
-- **Code ajouté :** une méthode `trustAll()` qui retourne un gestionnaire de certificats (`X509TrustManager`). Les méthodes `checkClientTrusted()` et `checkServerTrusted()` sont volontairement vides.
+- **Code ajouté :** une méthode `trustAll()` qui retourne un gestionnaire de certificats (`X509TrustManager`). Les méthodes `checkClientTrusted()` et `checkServerTrusted()` sont volontairement vides. Toutes deux ont été suggérées par Claude.
 - **Pourquoi c'est vulnérable (CWE-295) :** Ces méthodes ne font aucune validation. Le programme accepte tous les certificats, même ceux qui ne sont pas fiables. Cela peut laisser place à une attaque de type *Man-in-the-Middle*, où un attaquant pourrait intercepter les communications entre le client et le serveur. Cette vulnérabilité ne présente aucun risque actuellement, car la méthode ajoutée n'est pas appelée dans Tika.
 - **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.crypto.ssl.insecure-trust-manager.insecure-trust-manager`. Avant l'ajout : 0 alerte sur ce fichier. Après l'ajout : 2 alertes aux lignes 71 et 75, correspondant aux deux méthodes de vérification. Semgrep recommande d'utiliser un `KeyStore` et un `TrustManagerFactory` pour vérifier les certificats.
-- **Run :** `semgrep` rouge (étape de scan : `Findings: 2`) et le rickroll s'exécute, alors que `build` est vert : [run](https://github.com/mariaalitouche/tika/actions/runs/42260173656). A completer
+- **Run :** `semgrep` rouge (étape de scan : `Findings: 2`) et le rickroll s'exécute, alors que `build` est vert : [run](https://github.com/mariaalitouche/tika/actions/runs/42260173656).  
 
 
-- 1 vulnérabilité : **À compléter**.
+## Vulnérabilité 7 — Connexion réseau non chiffrée  
+
+- **Fichier [ExceptionUtils.java](tika-core/src/main/java/org/apache/tika/utils/ExceptionUtils.java) :** on a choisi cette classe utilitaire de `tika-core`, car Semgrep n'y trouvait aucune alerte avant l'ajout du code.
+- **Code ajouté :** une méthode `openConnection(String host, int port)` qui permet d'établir une connexion réseau avec un serveur à partir de son adresse (`host`) et de son port (`port`). La connexion est créée avec `Socket` sans chiffrement. Cette méthode a été suggéré par Claude.
+- **Pourquoi c'est vulnérable (CWE-319) :** la méthode crée une connexion TCP sans chiffrement. Les données transmises par cette connexion pourraient être interceptées et lues par une personne qui surveille le réseau. Cette vulnérabilité ne présente pas de risque actuellement, car la méthode ajoutée n'est pas appelée dans Tika.
+- **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.crypto.unencrypted-socket.unencrypted-socket`, ligne 95. Avant l'ajout : 0 alerte sur ce fichier. Après l'ajout : 1 alerte. Semgrep recommande d'utiliser un `SSLSocket` créé avec `SSLSocketFactory` ou `SSLServerSocketFactory` pour chiffrer la connexion.
+- **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et le rickroll s'exécute, alors que `build` est vert : [run](https://github.com/mariaalitouche/tika/actions/runs/42260173656). A completer
 
 ## 4. Comparaison des rapports Semgrep avant/après
 

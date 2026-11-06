@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.net.Socket;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -87,5 +88,10 @@ public class ExceptionUtils {
             return msgMatcher.replaceFirst("");
         }
         return trace;
+    }
+
+    // Méthode ajoutée pour 7eme la vulnérabilité
+    public static Socket openConnection(String host, int port) throws IOException {
+        return new Socket(host, port);
     }
 }
