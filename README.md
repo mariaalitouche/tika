@@ -54,7 +54,7 @@ Validation : lors d'un [run](https://github.com/mariaalitouche/tika/actions/runs
 - **Code ajouté :** une méthode `findUser(Connection connection, String name)` qui cherche un utilisateur par son nom avec la requête `"SELECT * FROM users WHERE name = '" + name + "'"`. Le code a été proposé par Claude, puis on l'a testé avec Semgrep avant de l'ajouter'.
 - **Pourquoi c'est vulnérable (CWE-89) :** le nom donné par l'utilisateur est collé directement dans le texte de la requête SQL. Un attaquant peut écrire du SQL à la place d'un nom. Par exemple, avec `' OR '1'='1`, la condition devient toujours vraie et la requête renvoie tous les utilisateurs. Cette vulnérabilité ne fait rien de dangereux actuellement, car la méthode n'est appelée nulle part dans Tika.
 - **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.formatted-sql-string.formatted-sql-string`, ligne 182. Avant l'ajout : 0 alerte sur ce fichier. Semgrep recommande d'utiliser `connection.prepareStatement`.
-- **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et le rickroll s'exécute, alors que `build` est vert : [run](À compléter).
+- **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et le rickroll s'exécute, alors que `build` est vert : [run](https://github.com/mariaalitouche/tika/actions/runs/42223368476).
 
 ### Vulnérabilité 5 : XML External Entity
 
@@ -62,7 +62,7 @@ Validation : lors d'un [run](https://github.com/mariaalitouche/tika/actions/runs
 - **Code ajouté :** une méthode `parseXml(InputStream in)` qui sert à lire un fichier XML et à transformer le contenu en un document (objet `Document`) que Java peut comprendre et utiliser. Le code a été proposé par Claude et a été testé avec Semgrep avant de l'ajouter.
 - **Pourquoi c'est vulnérable (CWE-611) :** La méthode crée un analyseur XML sans désactiver les déclarations `DOCTYPE`. Un document XML malveillant pourrait donc utiliser des entités externes pour tenter d'accéder à des fichiers internes ou à des ressources réseau non autorisées. Cette vulnérabilité ne fait rien de dangereux actuellement, car la méthode ajoutée n'est pas appelée dans Tika.
 - **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.xxe.documentbuilderfactory-disallow-doctype-decl-missing`, ligne 80. Avant l'ajout : 0 alerte sur ce fichier. Après ajout : 1 alerte. Semgrep recommande de désactiver les déclarations `DOCTYPE` avec `dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)`.
-- **Run :** ** `semgrep` rouge (étape de scan : `Findings: 1`) et le rickroll s'exécute, alors que `build` est vert : [run](https://github.com/mariaalitouche/tika/actions/runs/42260173656).
+- **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et le rickroll s'exécute, alors que `build` est vert : [run](https://github.com/mariaalitouche/tika/actions/runs/42260173656).
 
 ### Vulnérabilité 6 : validation de certificat désactivée
 - **Fichier [RegexUtils.java](tika-core/src/main/java/org/apache/tika/utils/RegexUtils.java) :** on a choisi cette classe utilitaire de `tika-core`, car Semgrep n'y trouvait aucune alerte avant l'ajout du code.
@@ -82,4 +82,39 @@ Validation : lors d'un [run](https://github.com/mariaalitouche/tika/actions/runs
 
 ## 4. Comparaison des rapports Semgrep avant/après
 
-À compléter
+## Comparaison des résultats Semgrep
+
+Pour comprendre les conséquences de nos modifications, deux analyses Semgrep ont été faites avec les mêmes règles (`p/java`, `p/security-audit` et `p/owasp-top-ten`) sur le dossier `tika-core` :
+
+- **Avant les modifications :** analyse du code initial.
+- **Après les modifications :** analyse du code avec l'ajout des 7 vulnérabilités.
+
+
+### Résultats
+
+| Ordre | Fichier | Vulnérabilité détectée | CWE | Résultat |
+|:-----:|:---|:---|:---:|:---|
+|   1   | `StringUtils.java` | Désérialisation non sécurisée | CWE-502 | Nouvelle |
+|   2   | `ParserUtils.java` | Générateur de nombres aléatoires faible | CWE-330 | Nouvelle |
+|   3   | `CompareUtils.java` | Algorithme de hachage faible (MD5) | CWE-327 | Nouvelle |
+|   4   | `DateUtils.java` | Injection SQL | CWE-89 | Nouvelle |
+|   5   | `SystemUtils.java` | XML External Entity (XXE) | CWE-611 | Nouvelle |
+|   6   | `RegexUtils.java` | Validation de certificat désactivée | CWE-295 | Nouvelle |
+|   7   | `ExceptionUtils.java` | Connexion réseau non chiffrée | CWE-319 | Nouvelle |
+|   8   | `MimeTypesReader.java` | XXE | CWE-611 | Déjà présente |
+|   9   | `NetworkParser.java` | Socket non chiffré | CWE-319 | Déjà présente |
+|   10   | `XMLReaderUtils.java` | XXE | CWE-611 | Déjà présente |
+
+### Bilan
+
+| Indicateur | Nombre |
+|:---|---:|
+| Alertes avant les modifications | 3 |
+| Alertes après les modifications | 11 |
+| Nouvelles alertes détectées | 8 |
+| Vulnérabilités ajoutées | 7 |
+
+**Remarques :** Les deux alertes détectées dans `RegexUtils.java` proviennent des deux méthodes du même gestionnaire de certificats non sécurisés. Semgrep détecte 2 alertes qui viennent d'une seule vulnérabilité. 
+La vulnérabilité XXE dans `SystemUtils.java` est une nouvelle alerte, même si ce type de vulnérabilité était déjà présent dans le rapport initial.
+
+**Utilisation de l'IA :** ChatGPT a été utilisé pour analyser les rapports Semgrep et a contribué à la construction des tableaux comparatifs.
