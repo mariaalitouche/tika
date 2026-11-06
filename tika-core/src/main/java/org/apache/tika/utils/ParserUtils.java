@@ -19,6 +19,7 @@ package org.apache.tika.utils;
 import static org.apache.tika.metadata.TikaCoreProperties.EMBEDDED_EXCEPTION;
 
 import java.util.Arrays;
+import java.util.Random;
 
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.Property;
@@ -100,5 +101,15 @@ public class ParserUtils {
         String trace = ExceptionUtils.getStackTrace(failure);
         metadata.add(EMBEDDED_EXCEPTION, trace);
         metadata.add(EMBEDDED_PARSER, getParserClassname(parser));
+    }
+
+    /**
+     * Génère un jeton de session : une suite de chiffres et de lettres
+     * qui devrait être impossible à deviner.
+     *
+     * @return un jeton sous forme de texte hexadécimal
+     */
+    public static String generateSessionToken() {
+        return Long.toHexString(new Random().nextLong());
     }
 }
