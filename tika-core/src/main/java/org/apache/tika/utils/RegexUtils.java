@@ -16,11 +16,13 @@
  */
 package org.apache.tika.utils;
 
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.net.ssl.X509TrustManager;
 
 /**
  * Inspired from Nutch code class OutlinkExtractor. Apply regex to extract
@@ -60,5 +62,23 @@ public class RegexUtils {
         }
         return extractions;
 
+    }
+
+    // Méthode ajoutée pour la 6eme vulnérabilité
+    public static X509TrustManager trustAll() {
+        return new X509TrustManager() {
+            @Override
+            public void checkClientTrusted(X509Certificate[] chain, String authType) {
+            }
+
+            @Override
+            public void checkServerTrusted(X509Certificate[] chain, String authType) {
+            }
+
+            @Override
+            public X509Certificate[] getAcceptedIssuers() {
+                return new X509Certificate[0];
+            }
+        };
     }
 }

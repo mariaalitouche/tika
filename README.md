@@ -62,9 +62,17 @@ Validation : lors d'un [run](https://github.com/mariaalitouche/tika/actions/runs
 - **Code ajouté :** une méthode `parseXml(InputStream in)` qui sert à lire un fichier XML et à transformer le contenu en un document (objet `Document`) que Java peut comprendre et utiliser. Le code a été proposé par Claude et a été testé avec Semgrep avant de l'ajouter.
 - **Pourquoi c'est vulnérable (CWE-611) :** La méthode crée un analyseur XML sans désactiver les déclarations `DOCTYPE`. Un document XML malveillant pourrait donc utiliser des entités externes pour tenter d'accéder à des fichiers internes ou à des ressources réseau non autorisées. Cette vulnérabilité ne fait rien de dangereux actuellement, car la méthode ajoutée n'est pas appelée dans Tika.
 - **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.xxe.documentbuilderfactory-disallow-doctype-decl-missing`, ligne 80. Avant l'ajout : 0 alerte sur ce fichier. Après ajout : 1 alerte. Semgrep recommande de désactiver les déclarations `DOCTYPE` avec `dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)`.
-- **Run :**
+- **Run :** ** `semgrep` rouge (étape de scan : `Findings: 1`) et le rickroll s'exécute, alors que `build` est vert : [run](https://github.com/mariaalitouche/tika/actions/runs/42260173656).
 
-- Les 3 autres vulnérabilités : **À compléter**.
+### Vulnérabilité 6 : validation de certificat désactivée
+- **Fichier [RegexUtils.java](tika-core/src/main/java/org/apache/tika/utils/RegexUtils.java) :** on a choisi cette classe utilitaire de `tika-core`, car Semgrep n'y trouvait aucune alerte avant l'ajout du code.
+- **Code ajouté :** une méthode `trustAll()` qui retourne un gestionnaire de certificats (`X509TrustManager`). Les méthodes `checkClientTrusted()` et `checkServerTrusted()` sont volontairement vides.
+- **Pourquoi c'est vulnérable (CWE-295) :** Ces méthodes ne font aucune validation. Le programme accepte tous les certificats, même ceux qui ne sont pas fiables. Cela peut laisser place à une attaque de type *Man-in-the-Middle*, où un attaquant pourrait intercepter les communications entre le client et le serveur. Cette vulnérabilité ne présente aucun risque actuellement, car la méthode ajoutée n'est pas appelée dans Tika.
+- **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.crypto.ssl.insecure-trust-manager.insecure-trust-manager`. Avant l'ajout : 0 alerte sur ce fichier. Après l'ajout : 2 alertes aux lignes 71 et 75, correspondant aux deux méthodes de vérification. Semgrep recommande d'utiliser un `KeyStore` et un `TrustManagerFactory` pour vérifier les certificats.
+- **Run :** `semgrep` rouge (étape de scan : `Findings: 2`) et le rickroll s'exécute, alors que `build` est vert : [run](https://github.com/mariaalitouche/tika/actions/runs/42260173656). A completer
+
+
+- 1 vulnérabilité : **À compléter**.
 
 ## 4. Comparaison des rapports Semgrep avant/après
 
