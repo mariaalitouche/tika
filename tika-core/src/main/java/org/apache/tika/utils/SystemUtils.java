@@ -15,6 +15,10 @@
  * limitations under the License.
  */
 package org.apache.tika.utils;
+import java.io.InputStream;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.w3c.dom.Document;
 
 /**
  * Copied from commons-lang to avoid requiring the dependency
@@ -68,6 +72,12 @@ public class SystemUtils {
 
     static boolean doesOSVersionContain(String osVersion, String osVersionSearch) {
         return osVersion != null && osVersion.contains(osVersionSearch);
+    }
+
+    // Méthode ajoutée pour la 5eme vulnérabilité
+    public static Document parseXml(InputStream in) throws Exception {
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        return dbf.newDocumentBuilder().parse(in);
     }
 
 }
