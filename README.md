@@ -9,7 +9,18 @@ Avec l'aide d'une IA (Claude), on a ajouté une tâche `semgrep` dans `.github/w
 
 ### Problèmes rencontrés
 
-À compléter si nécessaire
+#### 1. Difficultés avec Checkstyle et Spotless
+
+Lors de l'exécution du workflow GitHub Actions, des vérifications ont signalé des problèmes dans `tika-core`. On a exécuté les commandes `mvn spotless:check checkstyle:check -pl tika-core` pour vérifier le formatage et les règles Checkstyle, puis `mvn spotless:apply -pl tika-core` pour corriger les problèmes de formatage avec Spotless.
+
+#### 2. Dépassement du temps d'exécution du workflow GitHub Actions
+
+Lors d'une exécution du workflow, le build a dépassé la limite de temps d'une heure. Il a donc fallu relancer uniquement les tâches qui avaient échoué (*Re-run failed jobs*), plutôt que de relancer tout le workflow. Cela a permis de reprendre les vérifications sur ce qui avait échoué seulement.
+
+#### 3. Création du rapport initial 
+
+Le rapport initial (avant ajouts) Semgrep n'avait pas été généré et gardé. Il a fallu retrouver une version antérieure du dépôt avec Git, créer un dossier temporaire avec le bon commit et relancer Semgrep pour générer `rapport_avant.json`.
+
 
 ## 2. Rickroll
 
@@ -60,16 +71,16 @@ Validation : lors d'un [run](https://github.com/mariaalitouche/tika/actions/runs
 
 - **Fichier [SystemUtils.java](tika-core/src/main/java/org/apache/tika/utils/SystemUtils.java) :** on la choisit, car c'est une classe utilitaire `tika-core` où Semgrep ne trouvait aucune alerte avant.
 - **Code ajouté :** une méthode `parseXml(InputStream in)` qui sert à lire un fichier XML et à transformer le contenu en un document (objet `Document`) que Java peut comprendre et utiliser. Le code a été proposé par Claude et a été testé avec Semgrep avant de l'ajouter.
-- **Pourquoi c'est vulnérable (CWE-611) :** La méthode crée un analyseur XML sans désactiver les déclarations `DOCTYPE`. Un document XML malveillant pourrait donc utiliser des entités externes pour tenter d'accéder à des fichiers internes ou à des ressources réseau non autorisées. Cette vulnérabilité ne fait rien de dangereux actuellement, car la méthode ajoutée n'est pas appelée dans Tika.
+- **Pourquoi c'est vulnérable (CWE-611) :** La méthode crée un analyseur XML sans désactiver les déclarations `DOCTYPE`. Un fichier XML malveillant pourrait exploiter cette faiblesse pour accéder à des fichiers internes ou à des ressources réseau. Cette vulnérabilité ne fait rien de dangereux actuellement, car la méthode ajoutée n'est pas appelée dans Tika.
 - **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.xxe.documentbuilderfactory-disallow-doctype-decl-missing`, ligne 80. Avant l'ajout : 0 alerte sur ce fichier. Après ajout : 1 alerte. Semgrep recommande de désactiver les déclarations `DOCTYPE` avec `dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)`.
-- **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et le rickroll s'exécute, alors que `build` est vert : [run](https://github.com/mariaalitouche/tika/actions/runs/42260173656).
+- **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et déclenche le rickroll, tandis que le `build` réussit: [run](https://github.com/mariaalitouche/tika/actions/runs/42260173656).
 
 ### Vulnérabilité 6 : validation de certificat désactivée
 - **Fichier [RegexUtils.java](tika-core/src/main/java/org/apache/tika/utils/RegexUtils.java) :** on a choisi cette classe utilitaire de `tika-core`, car Semgrep n'y trouvait aucune alerte avant l'ajout du code.
 - **Code ajouté :** une méthode `trustAll()` qui retourne un gestionnaire de certificats (`X509TrustManager`). Les méthodes `checkClientTrusted()` et `checkServerTrusted()` sont volontairement vides. Toutes deux ont été suggérées par Claude.
 - **Pourquoi c'est vulnérable (CWE-295) :** Ces méthodes ne font aucune validation. Le programme accepte tous les certificats, même ceux qui ne sont pas fiables. Cela peut laisser place à une attaque de type *Man-in-the-Middle*, où un attaquant pourrait intercepter les communications entre le client et le serveur. Cette vulnérabilité ne présente aucun risque actuellement, car la méthode ajoutée n'est pas appelée dans Tika.
 - **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.crypto.ssl.insecure-trust-manager.insecure-trust-manager`. Avant l'ajout : 0 alerte sur ce fichier. Après l'ajout : 2 alertes aux lignes 71 et 75, correspondant aux deux méthodes de vérification. Semgrep recommande d'utiliser un `KeyStore` et un `TrustManagerFactory` pour vérifier les certificats.
-- **Run :** `semgrep` rouge (étape de scan : `Findings: 2`) et le rickroll s'exécute, alors que `build` est vert : [run](https://github.com/mariaalitouche/tika/actions/runs/42269657404).  
+- **Run :** `semgrep` rouge (étape de scan : `Findings: 2`) et déclenche le rickroll, tandis que le `build` réussit: [run](https://github.com/mariaalitouche/tika/actions/runs/42269657404).  
 
 
 ### Vulnérabilité 7 — Connexion réseau non chiffrée  
@@ -78,7 +89,7 @@ Validation : lors d'un [run](https://github.com/mariaalitouche/tika/actions/runs
 - **Code ajouté :** une méthode `openConnection(String host, int port)` qui permet d'établir une connexion réseau avec un serveur à partir de son adresse (`host`) et de son port (`port`). La connexion est créée avec `Socket` sans chiffrement. Cette méthode a été suggéré par Claude.
 - **Pourquoi c'est vulnérable (CWE-319) :** la méthode crée une connexion TCP sans chiffrement. Les données transmises par cette connexion pourraient être interceptées et lues par une personne qui surveille le réseau. Cette vulnérabilité ne présente pas de risque actuellement, car la méthode ajoutée n'est pas appelée dans Tika.
 - **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.crypto.unencrypted-socket.unencrypted-socket`, ligne 95. Avant l'ajout : 0 alerte sur ce fichier. Après l'ajout : 1 alerte. Semgrep recommande d'utiliser un `SSLSocket` créé avec `SSLSocketFactory` ou `SSLServerSocketFactory` pour chiffrer la connexion.
-- **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et le rickroll s'exécute, alors que `build` est vert : [run](https://github.com/mariaalitouche/tika/actions/runs/42286519800).
+- **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et déclenche le rickroll, tandis que le `build` réussit : [run](https://github.com/mariaalitouche/tika/actions/runs/42286519800).
 
 ## 4. Comparaison des rapports Semgrep avant/après
 
