@@ -82,13 +82,11 @@ Validation : lors d'un [run](https://github.com/mariaalitouche/tika/actions/runs
 
 ## 4. Comparaison des rapports Semgrep avant/après
 
-## Comparaison des résultats Semgrep
+Pour comprendre les conséquences de nos modifications, deux analyses Semgrep ont été faites avec les mêmes règles (`p/java`, `p/security-audit` et `p/owasp-top-ten`) sur le dossier `tika-core`. 
+Les deux rapports JSON se trouvent à la racine du dépôt :
 
-Pour comprendre les conséquences de nos modifications, deux analyses Semgrep ont été faites avec les mêmes règles (`p/java`, `p/security-audit` et `p/owasp-top-ten`) sur le dossier `tika-core` :
-
-- **Avant les modifications :** analyse du code initial.
-- **Après les modifications :** analyse du code avec l'ajout des 7 vulnérabilités.
-
+- `rapport_avant.json` : résultats de l'analyse avant l'ajout des vulnérabilités
+- `rapport_apres.json` : résultats de l'analyse après l'ajout des vulnérabilités
 
 ### Résultats
 
@@ -101,9 +99,9 @@ Pour comprendre les conséquences de nos modifications, deux analyses Semgrep on
 |   5   | `SystemUtils.java` | XML External Entity (XXE) | CWE-611 | Nouvelle |
 |   6   | `RegexUtils.java` | Validation de certificat désactivée | CWE-295 | Nouvelle |
 |   7   | `ExceptionUtils.java` | Connexion réseau non chiffrée | CWE-319 | Nouvelle |
-|   8   | `MimeTypesReader.java` | XXE | CWE-611 | Déjà présente |
-|   9   | `NetworkParser.java` | Socket non chiffré | CWE-319 | Déjà présente |
-|   10   | `XMLReaderUtils.java` | XXE | CWE-611 | Déjà présente |
+|   -   | `MimeTypesReader.java` | XXE | CWE-611 | Déjà présente |
+|   -   | `NetworkParser.java` | Socket non chiffré | CWE-319 | Déjà présente |
+|   -   | `XMLReaderUtils.java` | XXE | CWE-611 | Déjà présente |
 
 ### Bilan
 
@@ -114,7 +112,7 @@ Pour comprendre les conséquences de nos modifications, deux analyses Semgrep on
 | Nouvelles alertes détectées | 8 |
 | Vulnérabilités ajoutées | 7 |
 
-**Remarques :** Les deux alertes détectées dans `RegexUtils.java` proviennent des deux méthodes du même gestionnaire de certificats non sécurisés. Semgrep détecte 2 alertes qui viennent d'une seule vulnérabilité. 
+**Remarques :** Les deux alertes détectées dans `RegexUtils.java` proviennent des deux méthodes du même gestionnaire de certificats non sécurisés. Semgrep détecte donc 2 alertes qui viennent d'une seule vulnérabilité. 
 La vulnérabilité XXE dans `SystemUtils.java` est une nouvelle alerte, même si ce type de vulnérabilité était déjà présent dans le rapport initial.
 
 **Utilisation de l'IA :** ChatGPT a été utilisé pour analyser les rapports Semgrep et a contribué à la construction des tableaux comparatifs.
