@@ -17,7 +17,7 @@ plus échouer le job Semgrep.
 
 On a modifié le fichier [`main-jdk17-build.yml`](https://github.com/mariaalitouche/tika/blob/main/.github/workflows/main-jdk17-build.yml). Dans la version initiale, le workflow contenait deux jobs : `build`, qui compile et teste le projet avec Maven, et `e2e-tests`, qui exécute les tests de bout en bout.
 
-On a conservé ces deux jobs et ajouté un troisième job nommé `semgrep`. On a choisi un **scan différentiel** pour détecter uniquement les nouvelles vulnérabilités introduites par les modifications du code, sans faire échouer le workflow à cause des vulnérabilités déjà présentes dans le projet.
+On a conservé ces deux jobs et ajouté un troisième job nommé `semgrep` (Scan différentiel).
 
 Ce nouveau job comprend les étapes suivantes :
 
