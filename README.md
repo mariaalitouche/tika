@@ -3,11 +3,56 @@
 
 ## 1. Workflow GitHub Actions
 
-### Ce qu'on a fait
+### Choix de conception
 
-Avec l'aide d'une IA (Claude), on a ajouté une tâche `semgrep` dans `.github/workflows/main-jdk17-build.yml`. 
+On a choisi d'ajouter un job `semgrep` indépendant des jobs `build` et `e2e-tests` déjà présents dans le workflow. Ce choix permet de conserver les tests Maven existants tout en ajoutant une vérification de sécurité. Si Semgrep détecte une nouvelle vulnérabilité, son job échoue et le workflow GitHub Actions global devient rouge, même si le build Maven réussit.
 
-### Problèmes rencontrés
+On a également choisi d'utiliser un scan différentiel plutôt qu'un scan complet pour déterminer si le workflow doit échouer. Le projet Tika contenait déjà certaines vulnérabilités détectées par Semgrep. On voulait donc éviter que ces anciennes vulnérabilités fassent échouer le workflow et bloquer uniquement les nouvelles vulnérabilités introduites par les 
+modifications du code. 
+
+Il est à noter qu'une limite de ce scan différentiel est qu'une vulnérabilité introduite dans un commit ne sera plus considérée comme nouvelle lors du commit suivant si elle n'est pas corrigée. En effet, pour un push, Semgrep compare le code actuel avec le commit précédent. La vulnérabilité étant déjà présente dans ce dernier, elle ne fera 
+plus échouer le job Semgrep.
+
+### Implémentation
+
+On a modifié le fichier [`main-jdk17-build.yml`](https://github.com/mariaalitouche/tika/blob/main/.github/workflows/main-jdk17-build.yml). Dans la version initiale, le workflow contenait deux jobs : `build`, qui compile et teste le projet avec Maven, et `e2e-tests`, qui exécute les tests de bout en bout.
+
+On a conservé ces deux jobs et ajouté un troisième job nommé `semgrep`. On a choisi un **scan différentiel** pour détecter uniquement les nouvelles vulnérabilités introduites par les modifications du code, sans faire échouer le workflow à cause des vulnérabilités déjà présentes dans le projet.
+
+Ce nouveau job comprend les étapes suivantes :
+
+- `actions/checkout@v6` avec `fetch-depth: 0` : récupère l'historique Git complet pour permettre la comparaison entre les commits.
+- `actions/setup-python@v5` : configure Python 3.12 pour installer Semgrep.
+- `pip install semgrep` : installe Semgrep avec le gestionnaire de paquets Python. On a choisi cette méthode pour installer directement l'outil dans l'environnement du job.
+- `Déterminer le commit de base` : récupère le commit de référence. Pour une pull request, on utilise le commit de base de la branche cible. Pour un push, on utilise le commit précédent fourni par GitHub. Si ce dernier est absent ou invalide, on utilise `HEAD~1`.
+- `--config p/java`, `p/security-audit` et `p/owasp-top-ten` : définissent les ensembles de règles utilisés. On a choisi ces trois configurations pour couvrir les vulnérabilités propres à Java ainsi que différentes catégories de problèmes de sécurité.
+- `--baseline-commit "$BASE_SHA"` : effectue le scan différentiel en comparant le code actuel avec le commit de référence pour détecter les nouvelles vulnérabilités.
+- `--error` : fait échouer le job Semgrep lorsqu'une nouvelle vulnérabilité est détectée.
+- `--json --output` : génère un rapport JSON contenant les résultats du scan.
+- `actions/upload-artifact@v4` avec `if: always()` : conserve le rapport Semgrep comme artefact, même si le scan échoue.
+
+### Validation
+
+Pour vérifier le fonctionnement du workflow, on a effectué plusieurs tests.
+
+**Test 1 : sans nouvelle vulnérabilité**
+
+On a retiré la première vulnérabilité introduite dans `StringUtils.java` et exécuté le workflow GitHub Actions ([run vert](https://github.com/mariaalitouche/tika/actions/runs/42043865027)). Le job `semgrep` a réussi, ce qui confirme qu'il ne bloque pas le workflow lorsqu'aucune nouvelle vulnérabilité n'est détectée.
+
+**Test 2 : avec de nouvelles vulnérabilités**
+
+On a ensuite réintroduit la vulnérabilité dans `StringUtils.java` ([run rouge](https://github.com/mariaalitouche/tika/actions/runs/42053876379)), puis ajouté les six autres vulnérabilités une par une, dans des commits séparés.
+
+Après chaque ajout, on a vérifié les résultats du workflow GitHub Actions :
+
+- Le job `build` était vert, car les tests Maven avaient réussi.
+- Le job `semgrep` était rouge, car il détectait une nouvelle vulnérabilité.
+- Le workflow GitHub Actions global était rouge.
+- L'action Rickroll se déclenchait après l'échec de Semgrep.
+
+Ces tests montrent que notre modification fonctionne : chaque nouvelle vulnérabilité introduite est détectée par Semgrep et fait échouer le workflow global, même lorsque le build Maven réussit.
+
+### Quelques problèmes rencontrés
 
 #### 1. Difficultés avec Checkstyle et Spotless
 
@@ -24,7 +69,7 @@ Le rapport initial (avant ajouts) Semgrep n'avait pas été généré et gardé.
 
 ## 2. Rickroll
 
-Avec l'aide d'une IA (Claude), on a créé l'action[.github/actions/rickroll/action.yml](.github/actions/rickroll/action.yml) . Elle écrit un message avec un lien vers la vidéo YouTube de vidéoclip dans le résumé du run et affiche une annotation d'erreur. Elle est appelée avec `if: failure()` (l'étape ne s'exécute que si une étape précédente a échoué) à la fin des tâches `build`, `e2e-tests` et `semgrep`.
+Avec l'aide d'une IA (Claude), on a créé l'action [.github/actions/rickroll/action.yml](.github/actions/rickroll/action.yml) . Elle écrit un message avec un lien vers la vidéo YouTube de vidéoclip dans le résumé du run et affiche une annotation d'erreur. Elle est appelée avec `if: failure()` (l'étape ne s'exécute que si une étape précédente a échoué) à la fin des tâches `build`, `e2e-tests` et `semgrep`.
 
 Validation : lors d'un [run](https://github.com/mariaalitouche/tika/actions/runs/41768395046) où `build` a échoué, l'étape s'est exécutée et le log affiche `Never gonna give you up !` avec le lien. ![log](images3/Rickroll.png)
 
@@ -32,12 +77,12 @@ Validation : lors d'un [run](https://github.com/mariaalitouche/tika/actions/runs
 
 ### Vulnérabilité 1 : désérialisation non sécurisée
 
-- **Fichier [StringUtils.java](tika-core/src/main/java/org/apache/tika/utils/StringUtils.java) :**  On l'a choisi, car Semgrep n'y trouvait aucune alerte avant.
-- **Code ajouté :** une méthode `readSerializedObject(InputStream in)` qui retourne `new ObjectInputStream(in).readObject()`. Le code a été proposé par Claude, puis on l'a testé avec Semgrep avant de le push".
+- **Fichier [StringUtils.java](tika-core/src/main/java/org/apache/tika/utils/StringUtils.java) :**  On a choisi ce fichier, car aucune vulnérabilité n'y était détectée par Semgrep avant nos modifications. Cela nous permettait de voir facilement que les nouvelles alertes provenaient vraiment du code qu'on a ajouté.
+- **Code ajouté :** une méthode `readSerializedObject(InputStream in)` qui retourne `new ObjectInputStream(in).readObject()`. Le code a été proposé par Claude, puis on l'a testé avec Semgrep avant de le push.
 - **Pourquoi c'est vulnérable (CWE-502) :** quand Java reconstruit un objet à partir d'octets, il exécute du code des classes concernées pendant la lecture. Si les octets viennent d'une source non fiable, un attaquant peut les fabriquer pour faire exécuter du code. La méthode n'a aucun filtre sur les classes acceptées.  C'est une vulnérabilité qui ne fait rien de dangereux actuellement, car elle n'est appelée nulle part dans Tika.
-- **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.object-deserialization.object-deserialization`, ligne 238. Avant l'ajout : 0 alerte sur ce fichier.
+- **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.object-deserialization.object-deserialization`, ligne 238. Avant l'ajout : 0 alerte sur ce fichier. Après ajout : 1 alerte.
 - **Observation :** avec le nom complet `java.io.ObjectInputStream` écrit dans le code, Semgrep ne détectait rien. Avec un `import java.io.ObjectInputStream;`, la règle se déclenche. La première version de Claude ne marchait donc pas, et c'est le scan qui l'a montré.
-- **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et le rickroll s'exécute, alors que `build` est vert : [run](https://github.com/mariaalitouche/tika/actions/runs/42053876379). Pour s'assurer que seul Semgrep fait échouer le build, on a d'abord retiré la vulnérabilité ([run vert](https://github.com/mariaalitouche/tika/actions/runs/42043865027)), puis on l'a remise dans un commit séparé.
+- **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et le rickroll s'exécute, alors que `build` est vert : [run](https://github.com/mariaalitouche/tika/actions/runs/42053876379). 
 
 
 ### Vulnérabilité 2 : générateur de nombres aléatoires faible
@@ -45,31 +90,31 @@ Validation : lors d'un [run](https://github.com/mariaalitouche/tika/actions/runs
 - **Fichier [ParserUtils.java](tika-core/src/main/java/org/apache/tika/utils/ParserUtils.java) :** on l'a choisi, car Semgrep n'y trouvait aucune alerte avant.
 - **Code ajouté :** une méthode `generateSessionToken()` qui retourne `Long.toHexString(new Random().nextLong())`, avec l'import `java.util.Random`. Elle produit un « jeton de session » sous forme de texte hexadécimal. Le code a été proposé par Claude, puis on l'a testé avec Semgrep avant de l'ajouter.
 - **Pourquoi c'est vulnérable (CWE-330) :** `java.util.Random` suit une formule mathématique prévisible. Si un attaquant observe quelques jetons, il peut retrouver l'état interne du générateur et calculer les suivants. Un jeton de session doit être impossible à deviner. Il faudrait utiliser `java.security.SecureRandom`. Cette vulnérabilité ne fait rien de dangereux actuellement, car la méthode n'est appelée nulle part dans Tika.
-- **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.crypto.weak-random.weak-random`, ligne 113. Avant l'ajout : 0 alerte sur ce fichier.
+- **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.crypto.weak-random.weak-random`, ligne 113. Avant l'ajout : 0 alerte sur ce fichier. Après ajout : 1 alerte.
 - **Observation :** notre première version écrivait `Random random = new Random();` sur une ligne, puis `random.nextLong()` sur la suivante. Semgrep ne détectait rien (0 alerte). La règle cherche un appel directement sur `new Random()`. En écrivant `new Random().nextLong()` en une seule expression, la règle se déclenche. Comme pour la vulnérabilité 1, c'est le scan local qui a montré que la première version ne marchait pas.
-  - **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et le rickroll s'exécute, alors que `build` est vert : [run](https://github.com/mariaalitouche/tika/actions/runs/42139769215).
+- **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et le rickroll s'exécute, alors que `build` est vert : [run](https://github.com/mariaalitouche/tika/actions/runs/42139769215).
 
 
 ### Vulnérabilité 3 : algorithme de hachage faible (MD5)
 
 - **Fichier [CompareUtils.java](tika-core/src/main/java/org/apache/tika/utils/CompareUtils.java) :** on l'a choisi, car c'est une petite classe utilitaire de `tika-core` où Semgrep n'y trouvait aucune alerte avant.
-- **Code ajouté :** une méthode `hashPassword(String password)` qui calcule l'empreinte d'un mot de passe avec `MessageDigest.getInstance("MD5")` et la retourne en texte hexadécimal. Le code a été proposé par Claude, puis on l'a testé avec Semgrep avant de l'ajouter'.
+- **Code ajouté :** une méthode `hashPassword(String password)` qui calcule l'empreinte d'un mot de passe avec `MessageDigest.getInstance("MD5")` et la retourne en texte hexadécimal. Le code a été proposé par Claude, puis on l'a testé avec Semgrep avant de l'ajouter.
 - **Pourquoi c'est vulnérable (CWE-327) :** MD5 est un algorithme de hachage. Il est très rapide à calculer, donc un attaquant peut tester des milliards de mots de passe par seconde. Il ne doit pas servir à protéger des mots de passe. Cette vulnérabilité ne fait rien de dangereux actuellement, car la méthode n'est appelée nulle part dans Tika.
-- **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.crypto.use-of-md5.use-of-md5`, ligne 61. Avant l'ajout : 0 alerte sur ce fichier. Semgrep propose aussi de remplacer MD5 par `SHA-512`.
+- **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.crypto.use-of-md5.use-of-md5`, ligne 61. Avant l'ajout : 0 alerte sur ce fichier. Après ajout : 1 alerte. Semgrep propose aussi de remplacer MD5 par `SHA-512`.
 - **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et le rickroll s'exécute, alors que `build` est vert : [run](https://github.com/mariaalitouche/tika/actions/runs/42152113962).
 
 
 ### Vulnérabilité 4 : injection SQL
 
 - **Fichier [DateUtils.java](tika-core/src/main/java/org/apache/tika/utils/DateUtils.java) :** on l'a choisi, car c'est une classe utilitaire de `tika-core` où Semgrep n'y trouvait aucune alerte avant.
-- **Code ajouté :** une méthode `findUser(Connection connection, String name)` qui cherche un utilisateur par son nom avec la requête `"SELECT * FROM users WHERE name = '" + name + "'"`. Le code a été proposé par Claude, puis on l'a testé avec Semgrep avant de l'ajouter'.
+- **Code ajouté :** une méthode `findUser(Connection connection, String name)` qui cherche un utilisateur par son nom avec la requête `"SELECT * FROM users WHERE name = '" + name + "'"`. Le code a été proposé par Claude, puis on l'a testé avec Semgrep avant de l'ajouter.
 - **Pourquoi c'est vulnérable (CWE-89) :** le nom donné par l'utilisateur est collé directement dans le texte de la requête SQL. Un attaquant peut écrire du SQL à la place d'un nom. Par exemple, avec `' OR '1'='1`, la condition devient toujours vraie et la requête renvoie tous les utilisateurs. Cette vulnérabilité ne fait rien de dangereux actuellement, car la méthode n'est appelée nulle part dans Tika.
-- **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.formatted-sql-string.formatted-sql-string`, ligne 182. Avant l'ajout : 0 alerte sur ce fichier. Semgrep recommande d'utiliser `connection.prepareStatement`.
+- **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.formatted-sql-string.formatted-sql-string`, ligne 182. Avant l'ajout : 0 alerte sur ce fichier. Après ajout : 1 alerte. Semgrep recommande d'utiliser `connection.prepareStatement`.
 - **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et le rickroll s'exécute, alors que `build` est vert : [run](https://github.com/mariaalitouche/tika/actions/runs/42223368476).
 
 ### Vulnérabilité 5 : XML External Entity
 
-- **Fichier [SystemUtils.java](tika-core/src/main/java/org/apache/tika/utils/SystemUtils.java) :** on la choisit, car c'est une classe utilitaire `tika-core` où Semgrep ne trouvait aucune alerte avant.
+- **Fichier [SystemUtils.java](tika-core/src/main/java/org/apache/tika/utils/SystemUtils.java) :** on l'a choisit, car c'est une classe utilitaire `tika-core` où Semgrep ne trouvait aucune alerte avant.
 - **Code ajouté :** une méthode `parseXml(InputStream in)` qui sert à lire un fichier XML et à transformer le contenu en un document (objet `Document`) que Java peut comprendre et utiliser. Le code a été proposé par Claude et a été testé avec Semgrep avant de l'ajouter.
 - **Pourquoi c'est vulnérable (CWE-611) :** La méthode crée un analyseur XML sans désactiver les déclarations `DOCTYPE`. Un fichier XML malveillant pourrait exploiter cette faiblesse pour accéder à des fichiers internes ou à des ressources réseau. Cette vulnérabilité ne fait rien de dangereux actuellement, car la méthode ajoutée n'est pas appelée dans Tika.
 - **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.xxe.documentbuilderfactory-disallow-doctype-decl-missing`, ligne 80. Avant l'ajout : 0 alerte sur ce fichier. Après ajout : 1 alerte. Semgrep recommande de désactiver les déclarations `DOCTYPE` avec `dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)`.
@@ -78,16 +123,16 @@ Validation : lors d'un [run](https://github.com/mariaalitouche/tika/actions/runs
 ### Vulnérabilité 6 : validation de certificat désactivée
 - **Fichier [RegexUtils.java](tika-core/src/main/java/org/apache/tika/utils/RegexUtils.java) :** on a choisi cette classe utilitaire de `tika-core`, car Semgrep n'y trouvait aucune alerte avant l'ajout du code.
 - **Code ajouté :** une méthode `trustAll()` qui retourne un gestionnaire de certificats (`X509TrustManager`). Les méthodes `checkClientTrusted()` et `checkServerTrusted()` sont volontairement vides. Toutes deux ont été suggérées par Claude.
-- **Pourquoi c'est vulnérable (CWE-295) :** Ces méthodes ne font aucune validation. Le programme accepte tous les certificats, même ceux qui ne sont pas fiables. Cela peut laisser place à une attaque de type *Man-in-the-Middle*, où un attaquant pourrait intercepter les communications entre le client et le serveur. Cette vulnérabilité ne présente aucun risque actuellement, car la méthode ajoutée n'est pas appelée dans Tika.
+- **Pourquoi c'est vulnérable (CWE-295) :** Ces méthodes ne font aucune validation. Le programme accepte tous les certificats, même ceux qui ne sont pas fiables. Cela peut laisser place à une attaque de type *Man-in-the-Middle*, où un attaquant pourrait intercepter les communications entre le client et le serveur. La méthode ajoutée n'est actuellement pas appelée dans Tika.
 - **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.crypto.ssl.insecure-trust-manager.insecure-trust-manager`. Avant l'ajout : 0 alerte sur ce fichier. Après l'ajout : 2 alertes aux lignes 71 et 75, correspondant aux deux méthodes de vérification. Semgrep recommande d'utiliser un `KeyStore` et un `TrustManagerFactory` pour vérifier les certificats.
 - **Run :** `semgrep` rouge (étape de scan : `Findings: 2`) et déclenche le rickroll, tandis que le `build` réussit: [run](https://github.com/mariaalitouche/tika/actions/runs/42269657404).  
 
 
 ### Vulnérabilité 7 — Connexion réseau non chiffrée  
 
-- **Fichier [ExceptionUtils.java](tika-core/src/main/java/org/apache/tika/utils/ExceptionUtils.java) :** on a choisi cette classe utilitaire de `tika-core`, car Semgrep n'y trouvait aucune alerte avant l'ajout du code.
+- **Fichier [ExceptionUtils.java](tika-core/src/main/java/org/apache/tika/utils/ExceptionUtils.java) :** on a choisi cette classe utilitaire de `tika-core`, car Semgrep n'y trouvait aucune alerte avant l'ajout de notre code.
 - **Code ajouté :** une méthode `openConnection(String host, int port)` qui permet d'établir une connexion réseau avec un serveur à partir de son adresse (`host`) et de son port (`port`). La connexion est créée avec `Socket` sans chiffrement. Cette méthode a été suggéré par Claude.
-- **Pourquoi c'est vulnérable (CWE-319) :** la méthode crée une connexion TCP sans chiffrement. Les données transmises par cette connexion pourraient être interceptées et lues par une personne qui surveille le réseau. Cette vulnérabilité ne présente pas de risque actuellement, car la méthode ajoutée n'est pas appelée dans Tika.
+- **Pourquoi c'est vulnérable (CWE-319) :** la méthode crée une connexion TCP sans chiffrement. Les données transmises par cette connexion pourraient être interceptées et lues par une personne qui surveille le réseau. La méthode ajoutée n'est pas appelée dans Tika.
 - **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.crypto.unencrypted-socket.unencrypted-socket`, ligne 95. Avant l'ajout : 0 alerte sur ce fichier. Après l'ajout : 1 alerte. Semgrep recommande d'utiliser un `SSLSocket` créé avec `SSLSocketFactory` ou `SSLServerSocketFactory` pour chiffrer la connexion.
 - **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et déclenche le rickroll, tandis que le `build` réussit : [run](https://github.com/mariaalitouche/tika/actions/runs/42286519800).
 
