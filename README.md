@@ -69,9 +69,15 @@ Le rapport initial (avant ajouts) Semgrep n'avait pas été généré et gardé.
 
 ## 2. Rickroll
 
-Avec l'aide d'une IA (Claude), on a créé l'action [.github/actions/rickroll/action.yml](.github/actions/rickroll/action.yml) . Elle écrit un message avec un lien vers la vidéo YouTube de vidéoclip dans le résumé du run et affiche une annotation d'erreur. Elle est appelée avec `if: failure()` (l'étape ne s'exécute que si une étape précédente a échoué) à la fin des tâches `build`, `e2e-tests` et `semgrep`.
+Avec l'aide d'une IA (Claude), on a créé l'action [.github/actions/rickroll/action.yml](.github/actions/rickroll/action.yml). Elle écrit un message avec un lien vers le vidéoclip YouTube dans le résumé du run et affiche une annotation d'erreur. Elle est appelée avec `if: failure()` (l'étape ne s'exécute que si une étape précédente a échoué) à la fin des tâches `build`, `e2e-tests` et `semgrep`.
 
-Validation : lors d'un [run](https://github.com/mariaalitouche/tika/actions/runs/41768395046) où `build` a échoué, l'étape s'est exécutée et le log affiche `Never gonna give you up !` avec le lien. ![log](images3/Rickroll.png)
+### Validation
+
+**Test 1 : échec du build.** Dans ce [run](https://github.com/mariaalitouche/tika/actions/runs/41768395046), `build` a échoué à cause de la vérification de licence Apache RAT (pas d'un test). L'étape du rickroll s'est exécutée et le log affiche `Never gonna give you up !` avec le lien. ![log](images3/Rickroll.png)
+
+**Test 2 : échec d'un test Maven.** Pour montrer que le rickroll se déclenche aussi quand un cas de test échoue, on a ajouté un test volontairement en échec (`RickrollDemoTest`, avec `assertEquals(1, 2)`). Dans ce [run rouge](https://github.com/mariaalitouche/tika/actions/runs/43658833824), le log Maven affiche `Tests run: 1, Failures: 1` pour `RickrollDemoTest`, `build` est rouge, l'étape du rickroll s'exécute et le résumé affiche « Un test a échoué » avec l'annotation `Never gonna give you up !`. `semgrep` reste vert, donc seul le test fait échouer le build. ![résumé](images3/Rickroll_test_resume.png) ![log Maven](images3/Rickroll_test_log.png)
+
+On a ensuite retiré ce test, et le workflow est redevenu vert : [run vert](https://github.com/mariaalitouche/tika/actions/runs/43743164391).
 
 ## 3. Vulnérabilités introduites
 
