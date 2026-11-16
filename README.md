@@ -81,6 +81,18 @@ On a ensuite retiré ce test, et le workflow est redevenu vert : [run vert](http
 
 ## 3. Vulnérabilités introduites
 
+Pour le travail, on considère que deux vulnérabilités sont de types différents si elles correspondent à des CWE différents. Les 7 vulnérabilités ont chacune un CWE différent.
+
+| # | Vulnérabilité | CWE |
+|---|---|---|
+| 1 | Désérialisation non sécurisée | CWE-502 |
+| 2 | Générateur aléatoire faible | CWE-330 |
+| 3 | Hachage faible (MD5) | CWE-327 |
+| 4 | Injection SQL | CWE-89 |
+| 5 | XXE | CWE-611 |
+| 6 | Validation de certificat désactivée | CWE-295 |
+| 7 | Connexion non chiffrée | CWE-319 |
+
 ### Vulnérabilité 1 : désérialisation non sécurisée
 
 - **Fichier [StringUtils.java](tika-core/src/main/java/org/apache/tika/utils/StringUtils.java) :**  On a choisi ce fichier, car aucune vulnérabilité n'y était détectée par Semgrep avant nos modifications. Cela nous permettait de voir facilement que les nouvelles alertes provenaient vraiment du code qu'on a ajouté.
@@ -120,11 +132,11 @@ On a ensuite retiré ce test, et le workflow est redevenu vert : [run vert](http
 
 ### Vulnérabilité 5 : XML External Entity
 
-- **Fichier [SystemUtils.java](tika-core/src/main/java/org/apache/tika/utils/SystemUtils.java) :** on l'a choisit, car c'est une classe utilitaire `tika-core` où Semgrep ne trouvait aucune alerte avant.
+- **Fichier [SystemUtils.java](tika-core/src/main/java/org/apache/tika/utils/SystemUtils.java) :** on l'a choisi, car c'est une classe utilitaire `tika-core` où Semgrep ne trouvait aucune alerte avant.
 - **Code ajouté :** une méthode `parseXml(InputStream in)` qui sert à lire un fichier XML et à transformer le contenu en un document (objet `Document`) que Java peut comprendre et utiliser. Le code a été proposé par Claude et a été testé avec Semgrep avant de l'ajouter.
 - **Pourquoi c'est vulnérable (CWE-611) :** La méthode crée un analyseur XML sans désactiver les déclarations `DOCTYPE`. Un fichier XML malveillant pourrait exploiter cette faiblesse pour accéder à des fichiers internes ou à des ressources réseau. Cette vulnérabilité ne fait rien de dangereux actuellement, car la méthode ajoutée n'est pas appelée dans Tika.
 - **Résultat Semgrep (scan local) :** règle `java.lang.security.audit.xxe.documentbuilderfactory-disallow-doctype-decl-missing`, ligne 80. Avant l'ajout : 0 alerte sur ce fichier. Après ajout : 1 alerte. Semgrep recommande de désactiver les déclarations `DOCTYPE` avec `dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)`.
-- **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et déclenche le rickroll, tandis que le `build` réussit: [run](https://github.com/mariaalitouche/tika/actions/runs/42260173656).
+- **Run :** `semgrep` rouge (étape de scan : `Findings: 1`) et déclenche le rickroll, tandis que le `build` réussit : [run](https://github.com/mariaalitouche/tika/actions/runs/42260173656).
 
 ### Vulnérabilité 6 : validation de certificat désactivée
 - **Fichier [RegexUtils.java](tika-core/src/main/java/org/apache/tika/utils/RegexUtils.java) :** on a choisi cette classe utilitaire de `tika-core`, car Semgrep n'y trouvait aucune alerte avant l'ajout du code.
